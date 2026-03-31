@@ -16,6 +16,11 @@ class StudentRegistrationForm(forms.ModelForm):
         model = User
         fields = ["full_name", "email"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-control"
+
     def clean(self):
         cleaned_data = super().clean()
         password1 = cleaned_data.get("password1")
@@ -44,3 +49,8 @@ class StudentRegistrationForm(forms.ModelForm):
 
 class EmailAuthenticationForm(AuthenticationForm):
     username = forms.EmailField(label="Email")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].widget.attrs["class"] = "form-control"
+        self.fields["password"].widget.attrs["class"] = "form-control"

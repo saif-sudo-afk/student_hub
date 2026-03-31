@@ -1,8 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Admin Dashboard{% endblock %}
 {% block content %}
-<h2>Admin Dashboard</h2>
-<p>Welcome {{ request.user.full_name }}.</p>
-<p>Use Django admin to manage majors, semesters, courses, professors, and global consistency.</p>
-<p><a href="/admin/">Open Admin Panel</a></p>
+<h2 class="h4 mb-1">Admin Dashboard</h2>
+<p class="text-muted">Welcome {{ request.user.full_name }}.</p>
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h6">Platform Control</h3>
+                <p class="text-muted">Manage users, majors, courses, and records.</p>
+                <a class="btn btn-sm btn-dark" href="/admin/">Open admin panel</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h6">Announcements</h3>
+                <p class="text-muted">Review communication visibility.</p>
+                <a class="btn btn-sm btn-primary" href="{% url 'communications:announcement_list' %}">View feed</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h6">Calendar</h3>
+                <p class="text-muted">Inspect upcoming academic events.</p>
+                <a class="btn btn-sm btn-primary" href="{% url 'communications:calendar_list' %}">Open calendar</a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

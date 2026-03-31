@@ -1,7 +1,26 @@
 {% extends "base.html" %}
 {% block title %}Professor Dashboard{% endblock %}
 {% block content %}
-<h2>Professor Dashboard</h2>
-<p>Welcome {{ request.user.full_name }}.</p>
-<p>Your teaching workspace is ready for materials, assignments, and submission review.</p>
+<h2 class="h4 mb-1">Professor Dashboard</h2>
+<p class="text-muted">Welcome {{ request.user.full_name }}.</p>
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h3 class="h6">Teaching Courses</h3>
+                <p class="text-muted">Manage your course spaces and materials.</p>
+                <a class="btn btn-sm btn-primary" href="{% url 'courses:course_list' %}">Open courses</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h3 class="h6">Assignments</h3>
+                <p class="text-muted">Create assignments and review submissions.</p>
+                <a class="btn btn-sm btn-primary" href="{% url 'assignments:assignment_list' %}">Open assignments</a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Calendar | Student Hub{% endblock %}
+{% block content %}
+<h2 class="h4 mb-3">Academic Calendar</h2>
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Event</th>
+                    <th>Type</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Scope</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                    <tr>
+                        <td>{{ event.title }}</td>
+                        <td>{{ event.event_type|title }}</td>
+                        <td>{{ event.start_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ event.end_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ event.scope|title }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="text-muted">No events scheduled.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

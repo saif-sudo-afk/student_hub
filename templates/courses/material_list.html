@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Materials | Student Hub{% endblock %}
+{% block content %}
+<h2 class="h4 mb-3">Study Materials</h2>
+<div class="row g-3">
+    {% for material in materials %}
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h3 class="h6 mb-1">{{ material.title }}</h3>
+                    <p class="text-muted mb-2">{{ material.course.code }} • {{ material.material_type|upper }}</p>
+                    <p class="small mb-2">Uploaded by {{ material.uploaded_by.user.full_name }}</p>
+                    {% if material.external_url %}
+                        <a class="btn btn-sm btn-outline-primary" href="{{ material.external_url }}" target="_blank">Open resource</a>
+                    {% elif material.file %}
+                        <a class="btn btn-sm btn-outline-primary" href="{{ material.file.url }}" target="_blank">Download file</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <p class="text-muted">No published materials yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Courses | Student Hub{% endblock %}
+{% block content %}
+<h2 class="h4 mb-3">Courses</h2>
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Code</th>
+                    <th>Title</th>
+                    <th>Semester</th>
+                    <th>Credits</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for course in courses %}
+                    <tr>
+                        <td>{{ course.code }}</td>
+                        <td>{{ course.title }}</td>
+                        <td>{{ course.semester.name }}</td>
+                        <td>{{ course.credits }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-muted">No courses available yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

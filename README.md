@@ -14,6 +14,7 @@
    - `SECURE_SSL_REDIRECT` = `True`
    - `SESSION_COOKIE_SECURE` = `True`
    - `CSRF_COOKIE_SECURE` = `True`
+   - `CLOUDINARY_URL` = `cloudinary://<api_key>:<api_secret>@<cloud_name>`
 5. Deploy.
 
 ## Migrations on Neon
@@ -38,5 +39,5 @@ Then login at:
 
 ## Notes
 
-- This version stores media with Django local media settings. For production uploads on Vercel, switch media to Cloudinary or Supabase Storage.
+- Media uploads are production-ready when `CLOUDINARY_URL` is set. Without it, local media storage is used (not suitable for Vercel production).
 - Static files are served using WhiteNoise configuration.

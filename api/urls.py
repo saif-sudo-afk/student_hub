@@ -15,6 +15,7 @@ from .views import (
     auth_login,
     auth_logout,
     auth_me,
+    auth_register_student,
     professor_announcement_detail,
     professor_announcements,
     professor_assignment_submissions,
@@ -25,6 +26,7 @@ from .views import (
     professor_grade_submission,
     professor_stats,
     professor_upload_material,
+    public_majors,
     public_stats,
     student_announcements,
     student_assignments,
@@ -38,6 +40,7 @@ from .views import (
 
 urlpatterns = [
     path("auth/login/", auth_login, name="auth_login"),
+    path("auth/register/student/", auth_register_student, name="auth_register_student"),
     path("auth/logout/", auth_logout, name="auth_logout"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="auth_refresh"),
     path("auth/me/", auth_me, name="auth_me"),
@@ -68,5 +71,6 @@ urlpatterns = [
     path("ai/history/", ai_history, name="ai_history"),
     path("ai/chat/", ai_chat, name="ai_chat"),
     path("ai/clear/", ai_clear, name="ai_clear"),
+    path("public/majors/", public_majors, name="public_majors"),
     path("public/stats/", public_stats, name="public_stats"),
 ]

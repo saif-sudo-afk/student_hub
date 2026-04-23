@@ -7,6 +7,7 @@ import { getDashboardPath } from '@/utils/routes';
 
 import { LandingPage } from '@/pages/Landing';
 import { LoginPage } from '@/pages/Login';
+import { RegisterPage } from '@/pages/Register';
 import { StudentDashboardPage } from '@/pages/student/Dashboard';
 import { StudentCoursesPage } from '@/pages/student/Courses';
 import { StudentCourseDetailPage } from '@/pages/student/CourseDetail';
@@ -44,6 +45,7 @@ export function AppRouter() {
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
       <Route element={<RoleGuard role="student" />}>
         <Route path="/student" element={<AppLayout />}>

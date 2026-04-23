@@ -6,7 +6,7 @@
 <div class="mx-auto max-w-3xl">
     <div class="glass rounded-2xl p-8">
         <h2 class="mb-2 text-2xl font-semibold">Create Student Account</h2>
-        <p class="mb-6 text-slate-300">Join your major space and start using Student Hub.</p>
+        <p class="mb-6 text-slate-300">Join your major space and start using Student Hub. Professor accounts are created by administrators only.</p>
         <form method="post">
             {% csrf_token %}
             {{ form.non_field_errors }}
@@ -22,10 +22,6 @@
                 <div>
                     <label class="mb-1 block text-sm" for="{{ form.major.id_for_label }}">Major</label>
                     {{ form.major }}
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm" for="{{ form.student_number.id_for_label }}">Student number</label>
-                    {{ form.student_number }}
                 </div>
                 <div>
                     <label class="mb-1 block text-sm" for="{{ form.password1.id_for_label }}">Password</label>

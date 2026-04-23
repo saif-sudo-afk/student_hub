@@ -1,8 +1,13 @@
 import { client, REFRESH_TOKEN_KEY } from '@/api/client';
-import type { AuthResponse, UserSummary } from '@/types';
+import type { AuthResponse, StudentRegistrationPayload, UserSummary } from '@/types';
 
 export async function loginRequest(email: string, password: string) {
   const response = await client.post<AuthResponse>('/api/auth/login/', { email, password });
+  return response.data;
+}
+
+export async function registerStudentRequest(payload: StudentRegistrationPayload) {
+  const response = await client.post<AuthResponse>('/api/auth/register/student/', payload);
   return response.data;
 }
 

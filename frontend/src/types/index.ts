@@ -25,6 +25,12 @@ export interface UserSummary {
   professor_profile: ProfessorProfileSummary | null;
 }
 
+export interface MajorOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
 export interface SemesterSummary {
   id: string;
   name: string;
@@ -220,6 +226,14 @@ export interface AuthResponse {
   access: string;
   refresh: string;
   user: UserSummary;
+}
+
+export interface StudentRegistrationPayload {
+  full_name: string;
+  email: string;
+  major_id: string;
+  password: string;
+  password_confirmation: string;
 }
 
 export interface PublicStats {

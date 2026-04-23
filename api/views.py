@@ -14,6 +14,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from academics.models import Major
+from accounts.forms import StudentRegistrationForm
 from accounts.models import ProfessorProfile, StudentProfile, User, UserRole
 from ai_assistant.services import ADMIN_SYSTEM_PROMPT, ask_llm
 from ai_assistant.views import (
@@ -87,6 +89,23 @@ def serialize_user(user):
         }
         if professor_profile
         else None,
+    }
+
+
+def serialize_auth_payload(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+        "user": serialize_user(user),
+    }
+
+
+def serialize_major(major):
+    return {
+        "id": str(major.id),
+        "name": major.name,
+        "code": major.code,
     }
 
 
@@ -255,14 +274,32 @@ def auth_login(request):
     if user is None or not user.is_active:
         return Response({"detail": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
 
-    refresh = RefreshToken.for_user(user)
-    return Response(
+    return Response(serialize_auth_payload(user))
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def auth_register_student(request):
+    form = StudentRegistrationForm(
         {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-            "user": serialize_user(user),
+            "full_name": (request.data.get("full_name") or "").strip(),
+            "email": (request.data.get("email") or "").strip(),
+            "major": request.data.get("major_id") or request.data.get("major"),
+            "password1": request.data.get("password") or "",
+            "password2": request.data.get("password_confirmation") or request.data.get("password") or "",
         }
     )
+    if not form.is_valid():
+        return Response(
+            {
+                "detail": "Registration failed.",
+                "errors": form.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = form.save()
+    return Response(serialize_auth_payload(user), status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
@@ -1012,3 +1049,10 @@ def public_stats(request):
             "professors_count": ProfessorProfile.objects.count(),
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_majors(request):
+    majors = Major.objects.filter(is_active=True).order_by("name")
+    return Response({"results": [serialize_major(major) for major in majors]})

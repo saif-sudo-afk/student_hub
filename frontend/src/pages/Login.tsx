@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuthStore } from '@/store/authStore';
 import { getDashboardPath } from '@/utils/routes';
@@ -93,7 +93,10 @@ export function LoginPage() {
               <button type="submit" className="btn-primary w-full justify-center" disabled={isLoading}>
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </button>
-              <div className="text-sm text-text-secondary">
+              <div className="flex items-center justify-between gap-3 text-sm text-text-secondary">
+                <Link to="/register" className="font-medium text-primary-light">
+                  Create student account
+                </Link>
                 <a href="#" className="font-medium text-primary-light">
                   Forgot password?
                 </a>

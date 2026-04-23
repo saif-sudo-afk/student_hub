@@ -22,8 +22,8 @@ export function HeroSection() {
             Manage courses, assignments, and AI-powered learning, all in one place.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <Link to="/login" className="btn-accent px-6 py-3 text-base">
-              Get Started
+            <Link to="/register" className="btn-accent px-6 py-3 text-base">
+              Create Student Account
             </Link>
             <a
               href="#features"
@@ -42,6 +42,9 @@ export function HeroSection() {
               </span>
             ))}
           </div>
+          <p className="mt-6 text-sm text-surface/80">
+            Student accounts can be created here. Professor accounts are created by administrators only.
+          </p>
         </div>
         <div className="mt-16 animate-bounce text-white/80">
           <ArrowDown className="h-6 w-6" />

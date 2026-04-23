@@ -24,6 +24,9 @@ export function LandingNavbar() {
               {link.label}
             </a>
           ))}
+          <Link to="/register" className="btn-primary">
+            Create Account
+          </Link>
           <Link to="/login" className="btn-secondary">
             Sign In
           </Link>
@@ -40,6 +43,9 @@ export function LandingNavbar() {
                 {link.label}
               </a>
             ))}
+            <Link to="/register" className="btn-primary justify-center" onClick={() => setOpen(false)}>
+              Create Account
+            </Link>
             <Link to="/login" className="btn-secondary justify-center" onClick={() => setOpen(false)}>
               Sign In
             </Link>

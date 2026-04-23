@@ -4,11 +4,12 @@ from django.contrib.auth.forms import AuthenticationForm
 from academics.models import Major
 
 from .models import StudentProfile, User, UserRole
+from .utils import generate_student_number
 
 
 class StudentRegistrationForm(forms.ModelForm):
     major = forms.ModelChoiceField(queryset=Major.objects.none())
-    student_number = forms.CharField(max_length=30)
+    student_number = forms.CharField(max_length=30, required=False)
     password1 = forms.CharField(widget=forms.PasswordInput)
     password2 = forms.CharField(widget=forms.PasswordInput)
 
@@ -32,6 +33,9 @@ class StudentRegistrationForm(forms.ModelForm):
             raise forms.ValidationError(
                 "No active major available yet. Contact the administrator."
             )
+        email = cleaned_data.get("email")
+        if email and User.objects.filter(email=email).exists():
+            self.add_error("email", "A user with this email already exists.")
         return cleaned_data
 
     def save(self, commit=True):
@@ -43,7 +47,7 @@ class StudentRegistrationForm(forms.ModelForm):
             StudentProfile.objects.create(
                 user=user,
                 major=self.cleaned_data["major"],
-                student_number=self.cleaned_data["student_number"],
+                student_number=self.cleaned_data.get("student_number") or generate_student_number(),
             )
         return user
 

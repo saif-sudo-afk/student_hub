@@ -2,6 +2,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from .admin import UserAdmin
+from academics.models import Major
 from .models import ProfessorProfile, User, UserRole
 
 
@@ -19,6 +20,27 @@ class UserRoleSyncTests(TestCase):
 
         self.assertNotEqual(user.password, "plain-password-123")
         self.assertTrue(user.check_password("plain-password-123"))
+
+    def test_student_registration_endpoint_creates_student_with_generated_number(self):
+        major = Major.objects.create(name="Computer Science", code="CS", is_active=True)
+
+        response = self.client.post(
+            "/api/auth/register/student/",
+            data={
+                "full_name": "New Student",
+                "email": "new-student@example.com",
+                "major_id": str(major.id),
+                "password": "testpass123",
+                "password_confirmation": "testpass123",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(email="new-student@example.com")
+        self.assertEqual(user.role, UserRole.STUDENT)
+        self.assertTrue(user.check_password("testpass123"))
+        self.assertTrue(user.student_profile.student_number.startswith("STU-"))
 
     def test_role_changes_sync_groups_and_staff_flags(self):
         user = User.objects.create_user(

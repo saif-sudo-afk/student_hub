@@ -6,9 +6,10 @@ import {
   getStoredRefreshToken,
   loginRequest,
   logoutRequest,
+  registerStudentRequest,
   refreshRequest,
 } from '@/api/auth';
-import type { UserSummary } from '@/types';
+import type { StudentRegistrationPayload, UserSummary } from '@/types';
 
 interface AuthState {
   user: UserSummary | null;
@@ -19,6 +20,7 @@ interface AuthState {
   isAuthenticated: boolean;
   initialize: () => Promise<void>;
   login: (email: string, password: string) => Promise<UserSummary>;
+  registerStudent: (payload: StudentRegistrationPayload) => Promise<UserSummary>;
   logout: () => Promise<void>;
   refresh: () => Promise<string | null>;
   setUser: (user: UserSummary | null) => void;
@@ -85,6 +87,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         hydrated: true,
       });
       return payload.user;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  async registerStudent(payload) {
+    set({ isLoading: true });
+    try {
+      const authPayload = await registerStudentRequest(payload);
+      writeTokens(authPayload.access, authPayload.refresh);
+      set({
+        user: authPayload.user,
+        accessToken: authPayload.access,
+        refreshToken: authPayload.refresh,
+        isAuthenticated: true,
+        hydrated: true,
+      });
+      return authPayload.user;
     } finally {
       set({ isLoading: false });
     }

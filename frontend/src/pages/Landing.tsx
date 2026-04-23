@@ -119,8 +119,8 @@ export function LandingPage() {
         <div className="mx-auto max-w-4xl px-4 text-center md:px-8">
           <h2 className="text-white">Ready to transform your academic workflow?</h2>
           <div className="mt-8">
-            <Link to="/login" className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-base font-semibold text-white">
-              Get Started Today
+            <Link to="/register" className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-base font-semibold text-white">
+              Create Student Account
             </Link>
           </div>
           <div className="mt-4 text-sm text-surface/90">

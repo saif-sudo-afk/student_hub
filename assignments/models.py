@@ -18,10 +18,10 @@ class SubmissionMode(models.TextChoices):
 
 
 class SubmissionStatus(models.TextChoices):
-    SUBMITTED = "submitted", "Submitted"
-    LATE = "late", "Late"
+    PENDING = "pending", "Pending"
     GRADED = "graded", "Graded"
     RETURNED = "returned", "Returned"
+    ERROR = "error", "Error"
 
 
 class Assignment(models.Model):
@@ -36,6 +36,9 @@ class Assignment(models.Model):
     )
     title = models.CharField(max_length=180)
     description = models.TextField()
+    attachment = models.FileField(
+        upload_to="assignments/attachments/", blank=True, null=True
+    )  # FIX-ADMIN-5 done
     assignment_type = models.CharField(max_length=20, choices=AssignmentType.choices)
     submission_mode = models.CharField(max_length=20, choices=SubmissionMode.choices)
     max_score = models.DecimalField(max_digits=6, decimal_places=2, default=20)
@@ -63,6 +66,11 @@ class StudyGroup(models.Model):
     leader = models.ForeignKey(
         "accounts.StudentProfile", on_delete=models.PROTECT, related_name="led_groups"
     )
+    members = models.ManyToManyField(
+        "accounts.StudentProfile",
+        related_name="study_groups",
+        blank=True,
+    )  # FIX-ADMIN-6 done
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -75,28 +83,6 @@ class StudyGroup(models.Model):
 
     def __str__(self):
         return f"{self.assignment.title} - {self.name}"
-
-
-class StudyGroupMember(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    group = models.ForeignKey(
-        StudyGroup, on_delete=models.CASCADE, related_name="memberships"
-    )
-    student = models.ForeignKey(
-        "accounts.StudentProfile",
-        on_delete=models.CASCADE,
-        related_name="group_memberships",
-    )
-    joined_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["group", "student"], name="uniq_group_student")
-        ]
-
-    def __str__(self):
-        return f"{self.group.name} - {self.student.user.email}"
-
 
 class Submission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -118,10 +104,11 @@ class Submission(models.Model):
         blank=True,
     )
     status = models.CharField(
-        max_length=20, choices=SubmissionStatus.choices, default=SubmissionStatus.SUBMITTED
+        max_length=20, choices=SubmissionStatus.choices, default=SubmissionStatus.PENDING
     )
     content_text = models.TextField(blank=True)
     file = models.FileField(upload_to="submissions/", blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)  # FIX-ADMIN-7 done
     submitted_at = models.DateTimeField(auto_now_add=True)
     score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     feedback = models.TextField(blank=True)

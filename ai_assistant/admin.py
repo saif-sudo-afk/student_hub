@@ -21,3 +21,13 @@ class AIQueryLogAdmin(admin.ModelAdmin):
     list_display = ("student", "intent", "status", "response_time_ms", "created_at")
     list_filter = ("status", "intent")
     search_fields = ("student__user__email", "query")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+    # FIX-ADMIN-3 done

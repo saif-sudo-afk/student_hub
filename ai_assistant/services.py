@@ -1,7 +1,8 @@
 from django.db.models import Q
+from django.utils import timezone
 
 from assignments.models import Assignment
-from communications.models import Announcement, CalendarEvent
+from communications.models import Announcement, AnnouncementScope, AnnouncementStatus, CalendarEvent, EventVisibility
 from courses.models import Course, StudyMaterial
 
 
@@ -37,6 +38,7 @@ def build_guided_answer(student_profile, query: str):
     references = []
     lines = []
     scoped_courses = _student_scoped_courses(student_profile)
+    now = timezone.now()
 
     if intent == Intent.FIND_COURSE:
         courses = scoped_courses[:5]
@@ -62,6 +64,9 @@ def build_guided_answer(student_profile, query: str):
 
     elif intent == Intent.EXPLAIN_EVENT:
         events = CalendarEvent.objects.filter(
+            Q(visibility=EventVisibility.ALL)
+            | Q(visibility=EventVisibility.STUDENTS)
+        ).filter(
             Q(scope="global") | Q(major=student_profile.major) | Q(course__in=scoped_courses)
         ).order_by("start_at")[:5]
         if events:
@@ -88,8 +93,18 @@ def build_guided_answer(student_profile, query: str):
 
     else:
         announcements = Announcement.objects.filter(
-            is_published=True
-        ).filter(Q(scope="global") | Q(major=student_profile.major) | Q(course__in=scoped_courses))[:3]
+            status=AnnouncementStatus.PUBLISHED,
+            publish_date__lte=now,
+        ).filter(
+            Q(expiry_date__isnull=True) | Q(expiry_date__gt=now)
+        ).filter(
+            Q(scope=AnnouncementScope.GLOBAL)
+            | Q(scope=AnnouncementScope.COURSE, course__in=scoped_courses)
+            | Q(
+                scope=AnnouncementScope.GROUP,
+                target_audience__members=student_profile,
+            )
+        ).distinct()[:3]
         lines.append("I can help you find courses, materials, events, and assignments.")
         lines.append("Try asking: 'show my materials' or 'what deadlines do I have?'")
         for ann in announcements:

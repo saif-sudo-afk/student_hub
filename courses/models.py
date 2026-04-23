@@ -6,9 +6,8 @@ from django.db import models
 
 class EnrollmentStatus(models.TextChoices):
     ACTIVE = "active", "Active"
-    COMPLETED = "completed", "Completed"
-    DROPPED = "dropped", "Dropped"
-    BLOCKED = "blocked", "Blocked"
+    INACTIVE = "inactive", "Inactive"
+    WITHDRAWN = "withdrawn", "Withdrawn"  # FIX-ADMIN-13 done
 
 
 class MaterialType(models.TextChoices):
@@ -24,6 +23,9 @@ class Course(models.Model):
     code = models.CharField(max_length=20, unique=True)
     title = models.CharField(max_length=160)
     description = models.TextField(blank=True)
+    material = models.FileField(
+        upload_to="courses/materials/", blank=True, null=True
+    )  # FIX-ADMIN-12 done
     credits = models.PositiveSmallIntegerField(default=1)
     semester = models.ForeignKey(
         "academics.Semester", on_delete=models.PROTECT, related_name="courses"

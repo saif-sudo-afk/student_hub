@@ -8,9 +8,12 @@
     <div class="glass rounded-2xl p-5">
         <h3 class="text-lg font-semibold">{{ item.title }}</h3>
         <p class="mt-1 text-xs text-slate-400">
-            {{ item.created_at|date:"Y-m-d H:i" }} | {{ item.scope|title }} | by {{ item.posted_by.full_name }}
+            {{ item.publish_date|date:"Y-m-d H:i" }} | {{ item.scope|title }} | by {{ item.created_by.full_name|default:"System" }}
         </p>
         <p class="mt-3 text-slate-200">{{ item.content }}</p>
+        {% if item.attachment %}
+            <a href="{{ item.attachment.url }}" class="mt-3 inline-block text-sm text-cyan-300 hover:text-cyan-200">Open attachment</a>
+        {% endif %}
     </div>
 {% empty %}
     <p class="text-slate-400">No announcements available.</p>

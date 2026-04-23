@@ -2,9 +2,20 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from django.contrib.auth.models import Group, Permission, User as AuthUser
+from django.contrib.admin.sites import NotRegistered
 from django.db.models import Q
 
 from .models import ProfessorProfile, StudentProfile, User, UserRole
+
+
+for model in (AuthUser, Group, Permission):
+    try:
+        admin.site.unregister(model)
+    except NotRegistered:
+        pass
+
+# FIX-ADMIN-2 done
 
 
 class UserAdminCreationForm(forms.ModelForm):
@@ -35,7 +46,17 @@ class UserAdminChangeForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = "__all__"
+        fields = (
+            "email",
+            "full_name",
+            "role",
+            "is_active",
+            "is_staff",
+            "is_superuser",
+            "password",
+            "last_login",
+            "date_joined",
+        )
 
     def clean_password(self):
         return self.initial["password"]
@@ -95,15 +116,16 @@ class UserAdmin(BaseUserAdmin):
     ordering = ("email",)
     search_fields = ("email", "full_name")
     readonly_fields = ("last_login", "date_joined")
+    filter_horizontal = ()
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Personal info", {"fields": ("full_name", "role")}),
         (
-            "Permissions",
-            {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},
+            "Access",
+            {"fields": ("is_active", "is_staff", "is_superuser")},
         ),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
-    )
+    )  # FIX-ADMIN-1 done
     add_fieldsets = (
         (
             None,

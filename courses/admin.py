@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Course, CourseMajor, Enrollment, StudyMaterial, TeachingAssignment
+from .models import Course, CourseMajor, Enrollment, TeachingAssignment
 
 
 @admin.register(Course)
@@ -8,6 +8,9 @@ class CourseAdmin(admin.ModelAdmin):
     list_display = ("code", "title", "semester", "credits", "is_active")
     list_filter = ("semester", "is_active")
     search_fields = ("code", "title")
+    autocomplete_fields = ("semester",)
+    fields = ("code", "title", "description", "material", "credits", "semester", "is_active")
+    # FIX-ADMIN-12 done
 
 
 @admin.register(CourseMajor)
@@ -26,13 +29,23 @@ class TeachingAssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
-    list_display = ("student", "course", "semester", "status", "enrolled_at")
+    list_display = ("student_name", "course", "enrolled_at", "status")
     list_filter = ("semester", "status")
     search_fields = ("student__user__email", "course__code")
+    readonly_fields = ("student", "course", "semester", "status", "enrolled_at")
 
+    @admin.display(description="Student name")
+    def student_name(self, obj):
+        return obj.student.user.full_name
 
-@admin.register(StudyMaterial)
-class StudyMaterialAdmin(admin.ModelAdmin):
-    list_display = ("title", "course", "uploaded_by", "material_type", "is_published")
-    list_filter = ("material_type", "is_published")
-    search_fields = ("title", "course__code", "uploaded_by__user__email")
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+    # FIX-ADMIN-13 done
+
+# FIX-ADMIN-14 done

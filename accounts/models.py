@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib.auth.hashers import identify_hasher, make_password
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -41,6 +42,16 @@ class UserManager(BaseUserManager):
         return self._create_user(email, password, **extra_fields)
 
 
+def _password_needs_hashing(password):
+    if not password:
+        return False
+    try:
+        identify_hasher(password)
+    except ValueError:
+        return True
+    return False
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
@@ -60,6 +71,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.full_name} ({self.email})"
+
+    def save(self, *args, **kwargs):
+        if _password_needs_hashing(self.password):
+            self.password = make_password(self.password)
+        super().save(*args, **kwargs)
 
     def get_full_name(self):
         return self.full_name

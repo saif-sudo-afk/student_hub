@@ -131,3 +131,23 @@ class StudyMaterial(models.Model):
 
     def __str__(self):
         return f"{self.course.code} - {self.title}"
+
+
+class CourseMaterial(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="course_materials"
+    )
+    title = models.CharField(max_length=160)
+    file = models.FileField(upload_to="courses/materials/")
+    uploaded_by = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="uploaded_course_materials"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"{self.course.code} - {self.title}"
+    # FIX-PROF-4 done

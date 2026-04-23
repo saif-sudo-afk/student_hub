@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}{{ course.title }} | Professor Course{% endblock %}
+{% block page_title %}{{ course.title }}{% endblock %}
+{% block page_subtitle %}Professor course workspace{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <section class="glass rounded-2xl p-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <p class="text-sm uppercase tracking-wide text-cyan-300">{{ course.code }}</p>
+                <h2 class="mt-2 text-2xl font-semibold">{{ course.title }}</h2>
+                <p class="mt-3 max-w-3xl text-sm text-slate-300">{{ course.description|default:"No description yet." }}</p>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" class="btn-secondary" onclick="toggleDescriptionForm()">Edit Description</button>
+                <a href="{% url 'assignments:create_assignment' %}?course={{ course.id }}" class="btn-primary">Create Assignment</a>
+            </div>
+        </div>
+
+        <form id="description-form" method="post" class="mt-5 {% if not description_form.errors %}hidden {% endif %}space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_description">
+            {{ description_form.description }}
+            {% if description_form.errors %}
+                <div class="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                    {{ description_form.errors }}
+                </div>
+            {% endif %}
+            <div class="flex justify-end gap-3">
+                <button type="button" class="btn-secondary" onclick="toggleDescriptionForm()">Cancel</button>
+                <button type="submit" class="btn-primary">Save Description</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="glass rounded-2xl p-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h3 class="text-xl font-semibold">Enrolled Students</h3>
+                <p class="text-sm text-slate-400">Search by name, student number, or status.</p>
+            </div>
+            <input
+                id="student-filter"
+                type="search"
+                placeholder="Search students"
+                class="w-full lg:max-w-sm"
+                oninput="filterStudents()"
+            >
+        </div>
+        <div class="mt-5 overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-400">
+                    <tr class="border-b border-slate-800">
+                        <th class="px-3 py-3">Name</th>
+                        <th class="px-3 py-3">Student ID</th>
+                        <th class="px-3 py-3">Enrollment Date</th>
+                        <th class="px-3 py-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="student-table">
+                    {% for enrollment in enrolled_students %}
+                        <tr class="border-b border-slate-900/80 student-row">
+                            <td class="px-3 py-3">{{ enrollment.student.user.full_name }}</td>
+                            <td class="px-3 py-3">{{ enrollment.student.student_number }}</td>
+                            <td class="px-3 py-3">{{ enrollment.enrolled_at|date:"Y-m-d" }}</td>
+                            <td class="px-3 py-3 capitalize">{{ enrollment.status }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-3 py-4 text-slate-400">No enrolled students found.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="glass rounded-2xl p-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <h3 class="text-xl font-semibold">Resources</h3>
+                <p class="text-sm text-slate-400">Upload course files and share download links from one place.</p>
+            </div>
+            <a href="{% url 'assignments:create_assignment' %}?course={{ course.id }}" class="btn-secondary">Create Assignment</a>
+        </div>
+
+        <div class="mt-5 space-y-3">
+            {% for resource in resources %}
+                <div class="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="font-semibold text-slate-100">{{ resource.title }}</p>
+                        <p class="mt-1 text-xs text-slate-400">
+                            {{ resource.uploaded_at|date:"Y-m-d H:i" }} | {{ resource.uploaded_by_name }}
+                        </p>
+                    </div>
+                    <a href="{{ resource.url }}" class="btn-primary" target="_blank">Download</a>
+                </div>
+            {% empty %}
+                <p class="text-sm text-slate-400">No resources uploaded yet.</p>
+            {% endfor %}
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="mt-6 space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload_material">
+            <div class="grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+                <div>
+                    <label class="mb-2 block text-sm text-slate-300">Title</label>
+                    {{ material_form.title }}
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm text-slate-300">File</label>
+                    {{ material_form.file }}
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="btn-primary w-full">Upload Resource</button>
+                </div>
+            </div>
+            {% if material_form.errors %}
+                <div class="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                    {{ material_form.errors }}
+                </div>
+            {% endif %}
+        </form>
+    </section>
+
+    <section class="glass rounded-2xl p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-xl font-semibold">Recent Assignments</h3>
+                <p class="text-sm text-slate-400">Latest work created for this course.</p>
+            </div>
+        </div>
+        <div class="mt-5 space-y-3">
+            {% for assignment in recent_assignments %}
+                <a href="{% url 'assignments:submission_review' assignment.id %}" class="block rounded-2xl border border-slate-800 bg-slate-950/60 p-4 transition hover:border-cyan-400/40">
+                    <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p class="font-semibold text-slate-100">{{ assignment.title }}</p>
+                            <p class="text-xs text-slate-400">Due {{ assignment.due_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+                        <span class="text-sm text-cyan-300">Review submissions</span>
+                    </div>
+                </a>
+            {% empty %}
+                <p class="text-sm text-slate-400">No assignments created for this course yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<script>
+function toggleDescriptionForm() {
+    const form = document.getElementById("description-form");
+    form.classList.toggle("hidden");
+}
+
+function filterStudents() {
+    const query = document.getElementById("student-filter").value.toLowerCase();
+    document.querySelectorAll(".student-row").forEach((row) => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
+    });
+}
+</script>
+{% endblock %}

@@ -18,7 +18,13 @@
             {% for course in courses %}
                 <tr class="border-t border-slate-800">
                     <td class="px-4 py-3">{{ course.code }}</td>
-                    <td class="px-4 py-3">{{ course.title }}</td>
+                    <td class="px-4 py-3">
+                        {% if request.user.role == 'professor' %}
+                            <a href="{% url 'courses:course_detail' course.id %}" class="text-cyan-300 hover:text-cyan-200">{{ course.title }}</a>
+                        {% else %}
+                            {{ course.title }}
+                        {% endif %}
+                    </td>
                     <td class="px-4 py-3">{{ course.semester.name }}</td>
                     <td class="px-4 py-3">{{ course.credits }}</td>
                 </tr>

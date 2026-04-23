@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Submission Review{% endblock %}
+{% block page_title %}{{ assignment.title }}{% endblock %}
+{% block page_subtitle %}Submission review for {{ assignment.course.code }}{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <section class="glass rounded-2xl p-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <p class="text-sm text-slate-400">{{ assignment.course.title }}</p>
+                <h2 class="text-2xl font-semibold">{{ assignment.title }}</h2>
+                <p class="mt-2 text-sm text-slate-300">Due {{ assignment.due_at|date:"Y-m-d H:i" }} | Max score {{ assignment.max_score }}</p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-slate-200">
+                    {{ submission_count }} submissions
+                </div>
+                <div class="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    {{ pending_count }} pending grading
+                </div>
+                <a href="{% url 'assignments:download_all_submissions' assignment.id %}" class="btn-secondary">Download All</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="glass rounded-2xl p-6">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-400">
+                    <tr class="border-b border-slate-800">
+                        <th class="px-3 py-3">Student</th>
+                        <th class="px-3 py-3">Submitted At</th>
+                        <th class="px-3 py-3">File</th>
+                        <th class="px-3 py-3">Current Grade</th>
+                        <th class="px-3 py-3">Feedback</th>
+                        <th class="px-3 py-3">Review</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in submission_rows %}
+                        <tr class="align-top border-b border-slate-900/80">
+                            <td class="px-3 py-4">
+                                <p class="font-semibold text-slate-100">{{ row.owner_name }}</p>
+                                <p class="text-xs capitalize text-slate-400">{{ row.submission.status }}</p>
+                            </td>
+                            <td class="px-3 py-4">{{ row.submission.submitted_at|date:"Y-m-d H:i" }}</td>
+                            <td class="px-3 py-4">
+                                {% if row.submission.file %}
+                                    <a href="{{ row.submission.file.url }}" class="text-cyan-300 hover:text-cyan-200" target="_blank">Download</a>
+                                {% else %}
+                                    <span class="text-slate-500">No file</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 py-4">{{ row.submission.score|default:"-" }}</td>
+                            <td class="px-3 py-4 max-w-sm text-slate-300">{{ row.submission.feedback|default:"-" }}</td>
+                            <td class="px-3 py-4">
+                                <form method="post" class="space-y-3">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="submission_id" value="{{ row.submission.id }}">
+                                    <div>
+                                        <label class="mb-2 block text-xs text-slate-400">Grade</label>
+                                        {{ row.form.grade }}
+                                    </div>
+                                    <div>
+                                        <label class="mb-2 block text-xs text-slate-400">Feedback</label>
+                                        {{ row.form.feedback }}
+                                    </div>
+                                    {% if row.form.errors %}
+                                        <div class="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
+                                            {{ row.form.errors }}
+                                        </div>
+                                    {% endif %}
+                                    <button type="submit" class="btn-primary w-full">Save Review</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-3 py-4 text-slate-400">No submissions received yet.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

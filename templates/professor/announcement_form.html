@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Write and publish communication for your teaching space.{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl glass rounded-2xl p-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-5">
+        {% csrf_token %}
+        <div class="grid gap-5 md:grid-cols-2">
+            <div class="md:col-span-2">
+                <label class="mb-2 block text-sm text-slate-300">Title</label>
+                {{ form.title }}
+            </div>
+            <div class="md:col-span-2">
+                <label class="mb-2 block text-sm text-slate-300">Content</label>
+                {{ form.content }}
+            </div>
+            <div>
+                <label class="mb-2 block text-sm text-slate-300">Scope</label>
+                {{ form.scope }}
+            </div>
+            <div>
+                <label class="mb-2 block text-sm text-slate-300">Course</label>
+                {{ form.course }}
+            </div>
+            <div>
+                <label class="mb-2 block text-sm text-slate-300">Publish Date</label>
+                {{ form.publish_date }}
+            </div>
+            <div>
+                <label class="mb-2 block text-sm text-slate-300">Expiry Date</label>
+                {{ form.expiry_date }}
+            </div>
+            <div>
+                <label class="mb-2 block text-sm text-slate-300">Status</label>
+                {{ form.status }}
+            </div>
+            <div>
+                <label class="mb-2 block text-sm text-slate-300">Priority</label>
+                {{ form.priority }}
+            </div>
+            <div>
+                <label class="mb-2 block text-sm text-slate-300">Attachment</label>
+                {{ form.attachment }}
+            </div>
+            <div class="flex items-end">
+                <label class="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-slate-200">
+                    {{ form.send_notification }}
+                    <span>Send notification</span>
+                </label>
+            </div>
+        </div>
+
+        {% if form.errors %}
+            <div class="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                {{ form.errors }}
+            </div>
+        {% endif %}
+
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'professor_announcements:list' %}" class="btn-secondary">Cancel</a>
+            <button type="submit" class="btn-primary">Save Announcement</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,24 +1,247 @@
 {% extends "base.html" %}
-{% block title %}AI Assistant | Student Hub{% endblock %}
+{% block title %}Student AI Assistant | Student Hub{% endblock %}
 {% block page_title %}AI Assistant{% endblock %}
-{% block page_subtitle %}Ask about courses, materials, assignments, or calendar events.{% endblock %}
+{% block page_subtitle %}Study support, platform guidance, and conversation history in one place.{% endblock %}
 {% block content %}
-<div class="max-w-4xl">
-    <div class="glass rounded-2xl p-6">
-        <h2 class="text-xl font-semibold">AI Academic Assistant</h2>
-        <p class="mt-1 text-slate-300">Ask about courses, materials, assignments, or calendar events.</p>
-        <form method="post" class="mt-5">
-            {% csrf_token %}
-            <label class="mb-2 block text-sm" for="query">Your question</label>
-            <textarea id="query" name="query" rows="4" required>{{ query }}</textarea>
-            <button class="btn-primary mt-3" type="submit">Ask assistant</button>
-        </form>
-        {% if answer %}
-            <div class="mt-6 rounded-xl border border-slate-700 bg-slate-900/80 p-4">
-                <h3 class="mb-2 font-semibold">Assistant Answer</h3>
-                <pre class="text-slate-200">{{ answer }}</pre>
+<div class="grid gap-6 xl:grid-cols-[320px_1fr]">
+    <section class="space-y-6">
+        <div class="glass rounded-2xl p-5">
+            <h2 class="text-lg font-semibold text-slate-100">Suggested questions</h2>
+            <div class="mt-4 space-y-3">
+                {% for suggestion in question_suggestions %}
+                    <button
+                        type="button"
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-left text-sm text-slate-200 transition hover:border-cyan-400/40 hover:bg-slate-900"
+                        data-fill-message="{{ suggestion }}"
+                    >
+                        {{ suggestion }}
+                    </button>
+                {% endfor %}
             </div>
-        {% endif %}
-    </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+            <h2 class="text-lg font-semibold text-slate-100">Quick platform links</h2>
+            <div class="mt-4 grid gap-3">
+                {% for link in quick_links %}
+                    <a
+                        href="{{ link.path }}"
+                        class="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-200 transition hover:border-cyan-400/40 hover:bg-slate-900"
+                    >
+                        {{ link.label }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="glass rounded-2xl p-5 lg:p-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-xl font-semibold text-slate-100">Conversation</h2>
+                <p class="mt-1 text-sm text-slate-400">The assistant keeps the full context of this thread.</p>
+            </div>
+            <button
+                id="clear-history-button"
+                type="button"
+                class="btn-secondary text-sm"
+                data-clear-url="{% url 'ai_assistant:clear_history' %}"
+            >
+                Clear history
+            </button>
+        </div>
+
+        <div id="assistant-thread" class="mt-6 flex max-h-[34rem] flex-col gap-4 overflow-y-auto pr-1">
+            <div
+                id="assistant-empty"
+                class="{% if conversation_messages %}hidden {% endif %}rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 px-5 py-8 text-center text-sm text-slate-400"
+            >
+                Start the conversation with a study question, a revision request, or a platform help prompt.
+            </div>
+            {% for message in conversation_messages %}
+                <div class="flex {% if message.role == 'user' %}justify-end{% else %}justify-start{% endif %}" data-message-role="{{ message.role }}">
+                    <div class="max-w-3xl rounded-2xl px-4 py-3 {% if message.role == 'user' %}bg-cyan-500/15 text-cyan-50 border border-cyan-400/25{% else %}bg-slate-900/85 text-slate-100 border border-slate-700{% endif %}">
+                        <div class="mb-2 text-xs font-semibold uppercase tracking-wide {% if message.role == 'user' %}text-cyan-200{% else %}text-slate-400{% endif %}">
+                            {% if message.role == 'user' %}You{% else %}Assistant{% endif %}
+                        </div>
+                        <div class="whitespace-pre-wrap text-sm leading-6">{{ message.content }}</div>
+                        {% if message.role == 'assistant' and message.references_json %}
+                            <div class="mt-4 rounded-xl border border-slate-700/80 bg-slate-950/60 p-3">
+                                <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Further reading</div>
+                                <ul class="mt-2 space-y-2 text-sm">
+                                    {% for reference in message.references_json %}
+                                        <li>
+                                            <a
+                                                href="{{ reference.url }}"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                class="text-cyan-300 transition hover:text-cyan-200"
+                                            >
+                                                {{ reference.title }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <form
+            id="assistant-form"
+            method="post"
+            data-post-url="{% url 'ai_assistant:assistant' %}"
+            class="mt-6 space-y-4"
+        >
+            {% csrf_token %}
+            <label class="block text-sm font-medium text-slate-200" for="assistant-message">Message</label>
+            <textarea
+                id="assistant-message"
+                name="message"
+                rows="4"
+                placeholder="Ask for help with a concept, study plan, or where to find something in Student Hub."
+                required
+            ></textarea>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p id="assistant-status" class="text-sm text-slate-400"></p>
+                <button id="assistant-submit" type="submit" class="btn-primary">Send</button>
+            </div>
+        </form>
+    </section>
 </div>
+
+<script>
+(() => {
+    const form = document.getElementById("assistant-form");
+    const textarea = document.getElementById("assistant-message");
+    const thread = document.getElementById("assistant-thread");
+    const emptyState = document.getElementById("assistant-empty");
+    const submitButton = document.getElementById("assistant-submit");
+    const statusNode = document.getElementById("assistant-status");
+    const clearButton = document.getElementById("clear-history-button");
+    const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    function escapeHtml(value) {
+        const div = document.createElement("div");
+        div.textContent = value;
+        return div.innerHTML;
+    }
+
+    function extractReferences(text) {
+        const regex = /https?:\/\/(?!student-hub)[^\s]+/gi;
+        const matches = text.match(regex) || [];
+        return matches.map((url) => {
+            const cleanUrl = url.replace(/[).,\]]+$/, "");
+            return { title: cleanUrl, url: cleanUrl };
+        });
+    }
+
+    function renderMessage(role, content, references = []) {
+        const wrapper = document.createElement("div");
+        wrapper.className = role === "user" ? "flex justify-end" : "flex justify-start";
+        wrapper.setAttribute("data-message-role", role);
+
+        const bubble = document.createElement("div");
+        bubble.className = role === "user"
+            ? "max-w-3xl rounded-2xl border border-cyan-400/25 bg-cyan-500/15 px-4 py-3 text-cyan-50"
+            : "max-w-3xl rounded-2xl border border-slate-700 bg-slate-900/85 px-4 py-3 text-slate-100";
+
+        let html = `
+            <div class="mb-2 text-xs font-semibold uppercase tracking-wide ${role === "user" ? "text-cyan-200" : "text-slate-400"}">
+                ${role === "user" ? "You" : "Assistant"}
+            </div>
+            <div class="whitespace-pre-wrap text-sm leading-6">${escapeHtml(content)}</div>
+        `;
+
+        if (role === "assistant" && references.length) {
+            const links = references.map((reference) => `
+                <li>
+                    <a href="${escapeHtml(reference.url)}" target="_blank" rel="noreferrer" class="text-cyan-300 transition hover:text-cyan-200">
+                        ${escapeHtml(reference.title)}
+                    </a>
+                </li>
+            `).join("");
+            html += `
+                <div class="mt-4 rounded-xl border border-slate-700/80 bg-slate-950/60 p-3">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Further reading</div>
+                    <ul class="mt-2 space-y-2 text-sm">${links}</ul>
+                </div>
+            `;
+        }
+
+        bubble.innerHTML = html;
+        wrapper.appendChild(bubble);
+        thread.appendChild(wrapper);
+        thread.scrollTop = thread.scrollHeight;
+        emptyState.classList.add("hidden");
+    }
+
+    async function submitMessage(event) {
+        event.preventDefault();
+        const message = textarea.value.trim();
+        if (!message) {
+            return;
+        }
+
+        textarea.value = "";
+        statusNode.textContent = "Sending...";
+        submitButton.disabled = true;
+        renderMessage("user", message);
+
+        try {
+            const response = await fetch(form.dataset.postUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: JSON.stringify({ message }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.detail || "Unable to get a reply right now.");
+            }
+            renderMessage("assistant", payload.reply, extractReferences(payload.reply));
+            statusNode.textContent = "Reply received.";
+        } catch (error) {
+            renderMessage("assistant", error.message || "Unable to get a reply right now.");
+            statusNode.textContent = "The assistant fell back to a minimal response.";
+        } finally {
+            submitButton.disabled = false;
+            textarea.focus();
+        }
+    }
+
+    async function clearHistory() {
+        statusNode.textContent = "Clearing history...";
+        try {
+            const response = await fetch(clearButton.dataset.clearUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                },
+            });
+            if (!response.ok) {
+                throw new Error("Unable to clear the conversation.");
+            }
+            Array.from(thread.querySelectorAll('[data-message-role]')).forEach((node) => node.remove());
+            emptyState.classList.remove("hidden");
+            statusNode.textContent = "History cleared.";
+        } catch (error) {
+            statusNode.textContent = error.message || "Unable to clear the conversation.";
+        }
+    }
+
+    form.addEventListener("submit", submitMessage);
+    clearButton.addEventListener("click", clearHistory);
+    document.querySelectorAll("[data-fill-message]").forEach((button) => {
+        button.addEventListener("click", () => {
+            textarea.value = button.dataset.fillMessage;
+            textarea.focus();
+        });
+    });
+})();
+</script>
 {% endblock %}

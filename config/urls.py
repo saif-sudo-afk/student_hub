@@ -17,7 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.generic import TemplateView
+
+from common.views import health
 
 admin.site.site_header = "Student Hub Admin"
 admin.site.site_title = "Student Hub Admin"
@@ -26,13 +29,30 @@ admin.site.index_template = "admin/index.html"
 admin.site.login_template = "admin/login.html"
 
 urlpatterns = [
-    path('', include('common.urls')),
+    path("health/", health, name="health"),
+    path("api/", include("api.urls")),
     path("accounts/", include("accounts.urls")),
+    path("server/professor/", include(("accounts.professor_urls", "professor"), namespace="professor")),
     path("courses/", include("courses.urls")),
     path("assignments/", include("assignments.urls")),
+    path("ai/", include("ai_assistant.urls")),
+    path(
+        "admin-panel/",
+        include(("ai_assistant.admin_panel_urls", "admin_panel_ai"), namespace="admin_panel_ai"),
+    ),
+    path(
+        "announcements/",
+        include(
+            ("communications.professor_urls", "professor_announcements"),
+            namespace="professor_announcements",
+        ),
+    ),
     path("communication/", include("communications.urls")),
-    path("assistant/", include("ai_assistant.urls")),
-    path('admin/', admin.site.urls),
+    path('django-admin/', admin.site.urls),
+    re_path(
+        r"^(?!api/|django-admin/|accounts/|server/professor/|courses/|assignments/|ai/|admin-panel/|announcements/|communication/|health/|static/|media/).*$",
+        TemplateView.as_view(template_name="index.html"),
+    ),
 ]
 
 if settings.DEBUG:

@@ -1,7 +1,8 @@
-from django.test import TestCase
+from django.test import Client, TestCase
+from django.urls import reverse
 
 from .admin import UserAdmin
-from .models import User, UserRole
+from .models import ProfessorProfile, User, UserRole
 
 
 class UserRoleSyncTests(TestCase):
@@ -37,3 +38,22 @@ class UserRoleSyncTests(TestCase):
 
         self.assertNotIn("groups", field_names)
         self.assertNotIn("user_permissions", field_names)
+
+    def test_professor_dashboard_redirects_to_professor_namespace(self):
+        client = Client()
+        user = User.objects.create_user(
+            email="dashboard-prof@example.com",
+            password="testpass123",
+            full_name="Dashboard Professor",
+            role=UserRole.PROFESSOR,
+        )
+        ProfessorProfile.objects.create(
+            user=user,
+            department="Engineering",
+            employee_code="EMP-DASH",
+        )
+
+        client.force_login(user)
+        response = client.get(reverse("accounts:dashboard"))
+
+        self.assertRedirects(response, reverse("professor:dashboard"))

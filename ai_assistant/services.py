@@ -1,113 +1,171 @@
-from django.db.models import Q
-from django.utils import timezone
+import re
 
-from assignments.models import Assignment
-from communications.models import Announcement, AnnouncementScope, AnnouncementStatus, CalendarEvent, EventVisibility
-from courses.models import Course, StudyMaterial
+try:
+    import anthropic
+except ImportError:  # pragma: no cover - handled through fallback
+    anthropic = None
+
+from .models import AIQueryStatus, FieldOfStudyConfig
 
 
 class Intent:
-    FIND_COURSE = "find_course"
-    FIND_MATERIAL = "find_material"
-    EXPLAIN_EVENT = "explain_event"
-    ASSIGNMENT_HELP = "assignment_help"
     NAVIGATION_HELP = "navigation_help"
+    # FIX-AI-1 done
 
 
-def detect_intent(query: str) -> str:
-    q = query.lower()
-    if any(k in q for k in ["course", "module", "class"]):
-        return Intent.FIND_COURSE
-    if any(k in q for k in ["material", "pdf", "slides", "lesson", "document"]):
-        return Intent.FIND_MATERIAL
-    if any(k in q for k in ["event", "calendar", "deadline", "exam"]):
-        return Intent.EXPLAIN_EVENT
-    if any(k in q for k in ["assignment", "tp", "td", "homework", "project"]):
-        return Intent.ASSIGNMENT_HELP
-    return Intent.NAVIGATION_HELP
+NAVIGATION_MAP = {
+    "grades": "/assignments/",
+    "grade": "/assignments/",
+    "assignments": "/assignments/",
+    "assignment": "/assignments/",
+    "courses": "/courses/",
+    "course": "/courses/",
+    "profile": "/accounts/dashboard/",
+    "announcements": "/communication/announcements/",
+    "announcement": "/communication/announcements/",
+    "materials": "/courses/materials/",
+    "material": "/courses/materials/",
+}  # FIX-AI-2 done
 
 
-def _student_scoped_courses(student_profile):
-    return Course.objects.filter(
-        Q(enrollments__student=student_profile) | Q(majors=student_profile.major)
-    ).distinct()
+STUDENT_SYSTEM_PROMPT = """
+You are an AI academic assistant for Student Hub, an LMS platform.
+You help students with: understanding course materials, clarifying concepts,
+preparing for exams, navigating the platform, and managing their academic workload.
+Always be encouraging and clear. If a student asks about grades, assignments,
+or platform navigation, give direct helpful answers. Do not make up data you don't have.
+If you don't know something specific about their account, guide them to the right page.
+Respond in the same language the student uses.
+"""
+
+PROFESSOR_SYSTEM_PROMPT = """
+You are an AI teaching assistant for Student Hub, an LMS platform.
+You help professors with: writing assignment briefs, generating exam questions,
+drafting student feedback, summarizing class performance, and navigating the platform.
+Be professional and efficient. When asked to generate exam questions or feedback,
+produce structured, ready-to-use text. Do not access student personal data unless provided.
+"""
+
+ADMIN_SYSTEM_PROMPT = """
+You are an AI analytics assistant for Student Hub, an LMS platform.
+You help administrators by summarizing platform activity, explaining usage patterns,
+and generating concise reports from data provided to you.
+Always respond in structured, concise summaries. Do not answer questions outside
+platform analytics and administration.
+"""
 
 
-def build_guided_answer(student_profile, query: str):
-    intent = detect_intent(query)
+def build_navigation_help(query: str) -> str:
+    lowered_query = (query or "").lower()
+    for noun, path in NAVIGATION_MAP.items():
+        if noun in lowered_query:
+            return f"You can find {noun} at {path}."
+    return "You can navigate Student Hub from /accounts/dashboard/."
+
+
+def _field_of_study_for_user(user) -> str:
+    student_profile = getattr(user, "student_profile", None)
+    if student_profile and getattr(student_profile, "major", None):
+        return student_profile.major.name
+    return ""
+
+
+def get_field_topics_for_user(user) -> list[str]:
+    field_of_study = _field_of_study_for_user(user)
+    if not field_of_study:
+        return []
+    config = FieldOfStudyConfig.objects.filter(field_of_study__iexact=field_of_study).first()
+    if not config:
+        return []
+    return [str(topic) for topic in config.topics]
+
+
+def get_system_prompt(user) -> str:
+    role = getattr(user, "role", "student")
+    if role == "professor":
+        return PROFESSOR_SYSTEM_PROMPT
+    if role == "admin":
+        return ADMIN_SYSTEM_PROMPT
+
+    prompt = STUDENT_SYSTEM_PROMPT
+    topics = get_field_topics_for_user(user)
+    if topics:
+        prompt = (
+            prompt.strip()
+            + "\n\nRelevant topics for this student's field: "
+            + ", ".join(topics)
+            + "."
+        )
+    return prompt  # FIX-AI-4 done
+
+
+def ask_llm(messages: list[dict], system_prompt: str) -> str:
+    try:
+        if anthropic is None:
+            raise RuntimeError("Anthropic SDK is not installed.")
+
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=messages,
+        )
+        reply = "\n".join(
+            block.text for block in response.content if hasattr(block, "text")
+        ).strip()
+        ask_llm.last_metadata = {
+            "status": AIQueryStatus.OK,
+            "tokens_in": getattr(response.usage, "input_tokens", 0),
+            "tokens_out": getattr(response.usage, "output_tokens", 0),
+            "intent": "",
+            "used_fallback": False,
+        }  # FIX-AI-11 done
+        return reply
+    except Exception as exc:  # FIX-AI-3 done
+        query = messages[-1]["content"] if messages else ""
+        lowered_error = str(exc).lower()
+        status = (
+            AIQueryStatus.RATE_LIMITED
+            if "rate" in lowered_error and "limit" in lowered_error
+            else AIQueryStatus.ERROR
+        )
+        ask_llm.last_metadata = {
+            "status": status,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "intent": Intent.NAVIGATION_HELP,
+            "used_fallback": True,
+            "error": str(exc),
+        }
+        return build_navigation_help(query)
+
+
+ask_llm.last_metadata = {
+    "status": AIQueryStatus.OK,
+    "tokens_in": 0,
+    "tokens_out": 0,
+    "intent": "",
+    "used_fallback": False,
+}
+
+
+EXTERNAL_URL_PATTERN = re.compile(r"https?://(?!student-hub)[^\s]+", re.IGNORECASE)
+
+
+def categorize_topic(user, message: str) -> str:
+    lowered_message = (message or "").lower()
+    for topic in get_field_topics_for_user(user):
+        if topic.lower() in lowered_message:
+            return topic
+    return "general"  # FIX-AI-10 done
+
+
+def extract_external_references(reply: str) -> list[dict]:
     references = []
-    lines = []
-    scoped_courses = _student_scoped_courses(student_profile)
-    now = timezone.now()
-
-    if intent == Intent.FIND_COURSE:
-        courses = scoped_courses[:5]
-        if courses:
-            lines.append("Here are relevant courses for your profile:")
-            for course in courses:
-                lines.append(f"- {course.code}: {course.title}")
-                references.append({"type": "course", "id": str(course.id), "code": course.code})
-        else:
-            lines.append("I could not find courses linked to your current major/enrollments yet.")
-
-    elif intent == Intent.FIND_MATERIAL:
-        materials = StudyMaterial.objects.filter(course__in=scoped_courses, is_published=True)[:5]
-        if materials:
-            lines.append("Here are study materials you can access:")
-            for material in materials:
-                lines.append(f"- {material.title} ({material.course.code})")
-                references.append(
-                    {"type": "material", "id": str(material.id), "course": material.course.code}
-                )
-        else:
-            lines.append("No published materials found for your current scope.")
-
-    elif intent == Intent.EXPLAIN_EVENT:
-        events = CalendarEvent.objects.filter(
-            Q(visibility=EventVisibility.ALL)
-            | Q(visibility=EventVisibility.STUDENTS)
-        ).filter(
-            Q(scope="global") | Q(major=student_profile.major) | Q(course__in=scoped_courses)
-        ).order_by("start_at")[:5]
-        if events:
-            lines.append("Upcoming academic events for you:")
-            for event in events:
-                lines.append(f"- {event.title} ({event.event_type})")
-                references.append({"type": "event", "id": str(event.id)})
-        else:
-            lines.append("No upcoming events are currently available for your profile.")
-
-    elif intent == Intent.ASSIGNMENT_HELP:
-        assignments = Assignment.objects.filter(course__in=scoped_courses, is_published=True).order_by(
-            "due_at"
-        )[:5]
-        if assignments:
-            lines.append("Your relevant assignments:")
-            for assignment in assignments:
-                lines.append(
-                    f"- {assignment.title} [{assignment.assignment_type.upper()}] due {assignment.due_at:%Y-%m-%d}"
-                )
-                references.append({"type": "assignment", "id": str(assignment.id)})
-        else:
-            lines.append("No published assignments found right now.")
-
-    else:
-        announcements = Announcement.objects.filter(
-            status=AnnouncementStatus.PUBLISHED,
-            publish_date__lte=now,
-        ).filter(
-            Q(expiry_date__isnull=True) | Q(expiry_date__gt=now)
-        ).filter(
-            Q(scope=AnnouncementScope.GLOBAL)
-            | Q(scope=AnnouncementScope.COURSE, course__in=scoped_courses)
-            | Q(
-                scope=AnnouncementScope.GROUP,
-                target_audience__members=student_profile,
-            )
-        ).distinct()[:3]
-        lines.append("I can help you find courses, materials, events, and assignments.")
-        lines.append("Try asking: 'show my materials' or 'what deadlines do I have?'")
-        for ann in announcements:
-            references.append({"type": "announcement", "id": str(ann.id), "title": ann.title})
-
-    return intent, "\n".join(lines), references
+    for match in EXTERNAL_URL_PATTERN.finditer(reply or ""):
+        raw_url = match.group(0).rstrip(").,]")
+        prefix = (reply[max(0, match.start() - 80):match.start()]).strip()
+        title = prefix.splitlines()[-1].strip(" -:") if prefix else raw_url
+        references.append({"title": title or raw_url, "url": raw_url})
+    return references  # FIX-AI-12 done

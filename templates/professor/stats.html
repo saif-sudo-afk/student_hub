@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Professor Stats{% endblock %}
+{% block page_title %}Professor Statistics{% endblock %}
+{% block page_subtitle %}Submission and grading metrics across your courses.{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="glass rounded-2xl p-5">
+            <p class="text-sm text-slate-400">Total Submissions</p>
+            <p class="mt-3 text-3xl font-semibold">{{ total_submissions }}</p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+            <p class="text-sm text-slate-400">Pending Grading</p>
+            <p class="mt-3 text-3xl font-semibold">{{ pending_submissions }}</p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+            <p class="text-sm text-slate-400">Students Missing Work</p>
+            <p class="mt-3 text-3xl font-semibold">{{ not_submitted_count }}</p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+            <p class="text-sm text-slate-400">Overall Avg Grade</p>
+            <p class="mt-3 text-3xl font-semibold">{{ overall_avg_grade|default:"-" }}</p>
+        </div>
+    </section>
+
+    <section class="glass rounded-2xl p-6">
+        <h3 class="text-xl font-semibold">Assignment Breakdown</h3>
+        <div class="mt-5 overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-400">
+                    <tr class="border-b border-slate-800">
+                        <th class="px-3 py-3">Title</th>
+                        <th class="px-3 py-3">Submissions Received</th>
+                        <th class="px-3 py-3">Pending</th>
+                        <th class="px-3 py-3">Average Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in assignment_stats %}
+                        <tr class="border-b border-slate-900/80">
+                            <td class="px-3 py-3">{{ item.title }}</td>
+                            <td class="px-3 py-3">{{ item.submissions_received }}</td>
+                            <td class="px-3 py-3">{{ item.submissions_pending }}</td>
+                            <td class="px-3 py-3">{{ item.average_grade|default:"-" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-3 py-4 text-slate-400">No assignment stats available.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="glass rounded-2xl p-6">
+        <h3 class="text-xl font-semibold">Students Missing At Least One Active Assignment</h3>
+        <div class="mt-5 space-y-3">
+            {% for row in missing_students %}
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <p class="font-semibold text-slate-100">{{ row.student.user.full_name }}</p>
+                        <span class="text-sm text-amber-200">{{ row.missing_count }} missing assignment{{ row.missing_count|pluralize }}</span>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-sm text-slate-400">All active students have submitted their active assignments.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

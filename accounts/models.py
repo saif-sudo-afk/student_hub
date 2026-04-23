@@ -61,6 +61,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"{self.full_name} ({self.email})"
 
+    def get_full_name(self):
+        return self.full_name
+
+    def get_short_name(self):
+        return self.full_name.split()[0] if self.full_name else self.email
+
 
 class StudentProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

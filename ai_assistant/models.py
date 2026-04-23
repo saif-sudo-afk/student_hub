@@ -17,10 +17,19 @@ class AIQueryStatus(models.TextChoices):
 
 class AIConversation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="ai_conversations",
+        null=True,
+        blank=True,
+    )
     student = models.ForeignKey(
         "accounts.StudentProfile",
         on_delete=models.CASCADE,
         related_name="ai_conversations",
+        null=True,
+        blank=True,
     )
     title = models.CharField(max_length=160, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -30,7 +39,14 @@ class AIConversation(models.Model):
         ordering = ["-updated_at"]
 
     def __str__(self):
-        return self.title or f"Conversation {self.id}"
+        actor = (
+            self.user.email
+            if self.user_id
+            else self.student.user.email
+            if self.student_id
+            else "unknown"
+        )
+        return self.title or f"Conversation {actor}"
 
 
 class AIMessage(models.Model):
@@ -52,14 +68,26 @@ class AIMessage(models.Model):
 
 class AIQueryLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="ai_query_logs",
+        null=True,
+        blank=True,
+    )
     student = models.ForeignKey(
-        "accounts.StudentProfile", on_delete=models.CASCADE, related_name="ai_query_logs"
+        "accounts.StudentProfile",
+        on_delete=models.CASCADE,
+        related_name="ai_query_logs",
+        null=True,
+        blank=True,
     )
     query = models.TextField()
     intent = models.CharField(max_length=80, blank=True)
     response_time_ms = models.PositiveIntegerField(default=0)
     tokens_in = models.PositiveIntegerField(default=0)
     tokens_out = models.PositiveIntegerField(default=0)
+    topic = models.CharField(max_length=100, blank=True, default="")
     status = models.CharField(max_length=20, choices=AIQueryStatus.choices)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -67,4 +95,22 @@ class AIQueryLog(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"AIQueryLog<{self.student.user.email}>"
+        actor = (
+            self.user.email
+            if self.user_id
+            else self.student.user.email
+            if self.student_id
+            else "unknown"
+        )
+        return f"AIQueryLog<{actor}>"
+
+
+class FieldOfStudyConfig(models.Model):
+    field_of_study = models.CharField(max_length=100, unique=True)
+    topics = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.field_of_study
+    # FIX-AI-9 done

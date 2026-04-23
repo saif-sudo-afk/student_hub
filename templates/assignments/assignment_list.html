@@ -3,6 +3,11 @@
 {% block page_title %}Assignments{% endblock %}
 {% block page_subtitle %}Track open work and publication status.{% endblock %}
 {% block content %}
+{% if request.user.role == 'professor' %}
+    <div class="mb-5 flex justify-end">
+        <a href="{% url 'assignments:create_assignment' %}" class="btn-primary">Create Assignment</a>
+    </div>
+{% endif %}
 <div class="glass rounded-2xl overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -19,7 +24,13 @@
             <tbody>
             {% for assignment in assignments %}
                 <tr class="border-t border-slate-800">
-                    <td class="px-4 py-3">{{ assignment.title }}</td>
+                    <td class="px-4 py-3">
+                        {% if request.user.role == 'professor' %}
+                            <a href="{% url 'assignments:submission_review' assignment.id %}" class="text-cyan-300 hover:text-cyan-200">{{ assignment.title }}</a>
+                        {% else %}
+                            {{ assignment.title }}
+                        {% endif %}
+                    </td>
                     <td class="px-4 py-3">{{ assignment.course.code }}</td>
                     <td class="px-4 py-3">{{ assignment.assignment_type|upper }}</td>
                     <td class="px-4 py-3">{{ assignment.submission_mode|title }}</td>

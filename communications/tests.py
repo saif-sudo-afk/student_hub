@@ -121,3 +121,27 @@ class CommunicationAdminTests(TestCase):
 
         self.assertContains(response, "Student Event")
         self.assertNotContains(response, "Professor Event")
+
+    def test_professor_can_create_announcement_from_professor_interface(self):
+        self.client.force_login(self.professor_user)
+        response = self.client.post(
+            reverse("professor_announcements:create"),
+            {
+                "title": "Course Notice",
+                "content": "Read chapter 2.",
+                "scope": AnnouncementScope.COURSE,
+                "course": str(self.course.id),
+                "publish_date": timezone.now().strftime("%Y-%m-%dT%H:%M"),
+                "status": AnnouncementStatus.PUBLISHED,
+                "priority": 1,
+                "send_notification": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            Announcement.objects.filter(
+                created_by=self.professor_user,
+                title="Course Notice",
+            ).exists()
+        )

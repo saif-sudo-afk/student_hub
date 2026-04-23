@@ -1,19 +1,22 @@
 from datetime import timedelta
 
 from django.contrib import admin
-from django.test import RequestFactory, TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, RequestFactory, TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from academics.models import Major, Semester, TermType
-from accounts.models import StudentProfile, User, UserRole
+from accounts.models import ProfessorProfile, StudentProfile, User, UserRole
 
 from .admin import EnrollmentAdmin
-from .models import Course, CourseMajor, Enrollment, EnrollmentStatus
+from .models import Course, CourseMajor, CourseMaterial, Enrollment, EnrollmentStatus, TeachingAssignment
 
 
 class EnrollmentAutomationTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
+        self.client = Client()
         self.major = Major.objects.create(name="Computer Science", code="CS")
         self.semester = Semester.objects.create(
             name="Spring 2026",
@@ -28,6 +31,21 @@ class EnrollmentAutomationTests(TestCase):
             semester=self.semester,
         )
         CourseMajor.objects.create(course=self.course, major=self.major, is_core=True)
+        self.professor_user = User.objects.create_user(
+            email="prof@example.com",
+            password="testpass123",
+            full_name="Professor User",
+            role=UserRole.PROFESSOR,
+        )
+        self.professor_profile = ProfessorProfile.objects.create(
+            user=self.professor_user,
+            department="Engineering",
+            employee_code="EMP-COURSE",
+        )
+        TeachingAssignment.objects.create(
+            professor=self.professor_profile,
+            course=self.course,
+        )
 
     def test_student_profile_creation_auto_enrolls_matching_course(self):
         student_user = User.objects.create_user(
@@ -60,3 +78,23 @@ class EnrollmentAutomationTests(TestCase):
         self.assertFalse(model_admin.has_add_permission(request))
         self.assertFalse(model_admin.has_change_permission(request))
         self.assertFalse(model_admin.has_delete_permission(request))
+
+    def test_professor_course_detail_accepts_material_upload(self):
+        self.client.force_login(self.professor_user)
+        response = self.client.post(
+            reverse("courses:course_detail", args=[self.course.id]),
+            {
+                "action": "upload_material",
+                "material-title": "Lecture 1",
+                "material-file": SimpleUploadedFile(
+                    "lecture1.pdf",
+                    b"pdf-bytes",
+                    content_type="application/pdf",
+                ),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            CourseMaterial.objects.filter(course=self.course, title="Lecture 1").exists()
+        )

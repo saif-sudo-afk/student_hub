@@ -33,9 +33,10 @@ def register_student(request):
 
 @login_required
 def dashboard(request):
+    if request.user.role == UserRole.PROFESSOR:
+        return redirect("professor:dashboard")
     role_template_map = {
         UserRole.STUDENT: "accounts/dashboards/student_dashboard.html",
-        UserRole.PROFESSOR: "accounts/dashboards/professor_dashboard.html",
         UserRole.ADMIN: "accounts/dashboards/admin_dashboard.html",
     }
     template_name = role_template_map.get(

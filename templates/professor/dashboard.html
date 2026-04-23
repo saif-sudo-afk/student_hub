@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Professor Dashboard{% endblock %}
+{% block page_title %}Professor Dashboard{% endblock %}
+{% block page_subtitle %}Overview of your teaching activity and recent student work.{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <section class="grid gap-4 md:grid-cols-3">
+        <div class="glass rounded-2xl p-5">
+            <p class="text-sm text-slate-400">Courses</p>
+            <p class="mt-3 text-3xl font-semibold">{{ courses_count }}</p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+            <p class="text-sm text-slate-400">Pending Submissions</p>
+            <p class="mt-3 text-3xl font-semibold">{{ pending_submissions }}</p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+            <p class="text-sm text-slate-400">Enrolled Students</p>
+            <p class="mt-3 text-3xl font-semibold">{{ enrolled_students }}</p>
+        </div>
+    </section>
+
+    <section class="glass rounded-2xl p-5">
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <a href="{% url 'assignments:create_assignment' %}{% if first_course %}?course={{ first_course.id }}{% endif %}" class="btn-primary">Create Assignment</a>
+            <a href="{% url 'assignments:assignment_list' %}" class="btn-secondary">View Submissions</a>
+            <a href="{% if first_course %}{% url 'courses:course_detail' first_course.id %}{% else %}{% url 'courses:course_list' %}{% endif %}" class="btn-secondary">Upload Material</a>
+            <a href="{% url 'professor_announcements:list' %}" class="btn-secondary">Write Announcement</a>
+        </div>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-2">
+        <div class="glass rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-semibold">Recent Assignments</h3>
+                <a href="{% url 'assignments:assignment_list' %}" class="text-sm text-cyan-300 hover:text-cyan-200">Open list</a>
+            </div>
+            <div class="mt-5 space-y-3">
+                {% for assignment in recent_assignments %}
+                    <a href="{% url 'assignments:submission_review' assignment.id %}" class="block rounded-2xl border border-slate-800 bg-slate-950/60 p-4 transition hover:border-cyan-400/40">
+                        <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <p class="font-semibold text-slate-100">{{ assignment.title }}</p>
+                                <p class="text-xs text-slate-400">{{ assignment.course.code }} | Due {{ assignment.due_at|date:"Y-m-d H:i" }}</p>
+                            </div>
+                            <span class="text-sm text-cyan-300">{{ assignment.submission_count }} submissions</span>
+                        </div>
+                    </a>
+                {% empty %}
+                    <p class="text-sm text-slate-400">No recent assignments yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-semibold">Recent Submissions</h3>
+                <a href="{% url 'professor:stats' %}" class="text-sm text-cyan-300 hover:text-cyan-200">View stats</a>
+            </div>
+            <div class="mt-5 space-y-3">
+                {% for submission in recent_submissions %}
+                    <a href="{% url 'assignments:submission_review' submission.assignment.id %}" class="block rounded-2xl border border-slate-800 bg-slate-950/60 p-4 transition hover:border-cyan-400/40">
+                        <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <p class="font-semibold text-slate-100">{{ submission.owner_name }}</p>
+                                <p class="text-xs text-slate-400">{{ submission.assignment.title }} | {{ submission.submitted_at|date:"Y-m-d H:i" }}</p>
+                            </div>
+                            <span class="text-sm capitalize text-cyan-300">{{ submission.status }}</span>
+                        </div>
+                    </a>
+                {% empty %}
+                    <p class="text-sm text-slate-400">No recent submissions yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

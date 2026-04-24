@@ -1,5 +1,6 @@
 from django.test import Client, TestCase
 from django.urls import reverse
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .admin import UserAdmin
 from academics.models import Major
@@ -62,6 +63,24 @@ class UserRoleSyncTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["user"]["id"], str(user.id))
         self.assertEqual(response.json()["user"]["email"], user.email)
+
+    def test_api_logout_succeeds_without_blacklist_tables(self):
+        user = User.objects.create_user(
+            email="logout-user@example.com",
+            password="testpass123",
+            full_name="Logout User",
+            role=UserRole.STUDENT,
+        )
+        refresh = RefreshToken.for_user(user)
+
+        response = self.client.post(
+            "/api/auth/logout/",
+            data={"refresh": str(refresh)},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["detail"], "Logged out.")
 
     def test_role_changes_sync_groups_and_staff_flags(self):
         user = User.objects.create_user(

@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from django.db.models import Avg, Count, Q
+from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import status
@@ -320,10 +321,11 @@ def auth_logout(request):
     refresh_token = request.data.get("refresh")
     if not refresh_token:
         return Response({"detail": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
-    try:
-        RefreshToken(refresh_token).blacklist()
-    except Exception:
-        pass
+    if "rest_framework_simplejwt.token_blacklist" in settings.INSTALLED_APPS:
+        try:
+            RefreshToken(refresh_token).blacklist()
+        except Exception:
+            pass
     return Response({"detail": "Logged out."})
 
 

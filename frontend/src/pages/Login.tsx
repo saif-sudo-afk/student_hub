@@ -16,16 +16,22 @@ export function LoginPage() {
   const [error, setError] = useState('');
 
   function getLoginErrorMessage(loginError: unknown) {
-    if (
-      typeof loginError === 'object' &&
-      loginError !== null &&
-      'response' in loginError &&
-      typeof (loginError as AxiosError).response?.data === 'object' &&
-      (loginError as AxiosError).response?.data !== null &&
-      'detail' in ((loginError as AxiosError).response?.data as Record<string, unknown>) &&
-      typeof ((loginError as AxiosError).response?.data as Record<string, unknown>).detail === 'string'
-    ) {
-      return ((loginError as AxiosError).response?.data as Record<string, string>).detail;
+    if (typeof loginError === 'object' && loginError !== null) {
+      const axiosError = loginError as AxiosError;
+      const responseData = axiosError.response?.data;
+
+      if (
+        typeof responseData === 'object' &&
+        responseData !== null &&
+        'detail' in (responseData as Record<string, unknown>) &&
+        typeof (responseData as Record<string, unknown>).detail === 'string'
+      ) {
+        return (responseData as Record<string, string>).detail;
+      }
+
+      if (axiosError.response) {
+        return `Sign-in failed with server error (${axiosError.response.status}).`;
+      }
     }
 
     if (typeof loginError === 'object' && loginError !== null && 'request' in loginError) {

@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from academics.models import Major, Semester, TermType
 from accounts.models import ProfessorProfile, StudentProfile, User, UserRole
-from courses.models import Course, CourseMajor
+from courses.models import Course, CourseMajor, TeachingAssignment
 
 from .admin import AnnouncementAdmin
 from .models import (
@@ -49,6 +49,10 @@ class CommunicationAdminTests(TestCase):
             user=self.professor_user,
             department="Engineering",
             employee_code="EMP-2",
+        )
+        TeachingAssignment.objects.create(
+            professor=self.professor_profile,
+            course=self.course,
         )
 
         self.student_user = User.objects.create_user(

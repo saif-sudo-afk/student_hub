@@ -1,4 +1,3 @@
-from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Avg, Count, Q
@@ -16,20 +15,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from academics.models import Major
 from accounts.forms import StudentRegistrationForm
 from accounts.models import ProfessorProfile, StudentProfile, User, UserRole
-from ai_assistant.services import ADMIN_SYSTEM_PROMPT, ask_llm
-from ai_assistant.views import (
-    _admin_stats_payload,
-    _get_existing_or_new_conversation,
-    _process_chat_message,
-)
-from ai_assistant.models import AIQueryLog
 from assignments.forms import AssignmentCreateForm, GradeSubmissionForm
 from assignments.models import Assignment, Submission, SubmissionStatus
 from communications.forms import ProfessorAnnouncementForm
 from communications.models import Announcement, AnnouncementScope, AnnouncementStatus
-from communications.views import _event_visibility_filter
 from courses.forms import CourseMaterialUploadForm
-from courses.models import Course, CourseMaterial, Enrollment, EnrollmentStatus, StudyMaterial
+from courses.models import Course, CourseMaterial, Enrollment, EnrollmentStatus
 from courses.views import _professor_courses
 
 
@@ -238,10 +229,6 @@ def serialize_course(course):
     }
 
 
-def bool_from_request(value):
-    return str(value).lower() in {"1", "true", "yes", "on"}
-
-
 def professor_accessible_courses(user):
     if user.role == UserRole.ADMIN:
         return Course.objects.all()
@@ -250,37 +237,8 @@ def professor_accessible_courses(user):
 
 def professor_profile_for_write(user):
     if user.role == UserRole.PROFESSOR:
-        return user.professor_profile
+        return getattr(user, "professor_profile", None)
     return ProfessorProfile.objects.select_related("user").first()
-
-
-def apply_user_role(user, role, data):
-    user.role = role
-    user.is_staff = role in {UserRole.ADMIN, UserRole.PROFESSOR}
-    user.is_superuser = role == UserRole.ADMIN
-    user.save()
-
-    if role == UserRole.PROFESSOR:
-        ProfessorProfile.objects.get_or_create(
-            user=user,
-            defaults={
-                "department": data.get("department") or "General",
-                "employee_code": data.get("employee_code") or f"PROF-{str(user.id)[:8]}",
-                "office": data.get("office") or "",
-            },
-        )
-    if role == UserRole.STUDENT and not hasattr(user, "student_profile"):
-        major_id = data.get("major_id") or data.get("major")
-        major = Major.objects.filter(id=major_id).first() if major_id else Major.objects.filter(is_active=True).first()
-        if major is not None:
-            from accounts.utils import generate_student_number
-
-            StudentProfile.objects.create(
-                user=user,
-                major=major,
-                student_number=data.get("student_number") or generate_student_number(),
-            )
-    return user
 
 
 def published_announcements_queryset():
@@ -294,7 +252,9 @@ def published_announcements_queryset():
 
 
 def student_announcements_queryset(user):
-    student_profile = user.student_profile
+    student_profile = getattr(user, "student_profile", None)
+    if student_profile is None:
+        return published_announcements_queryset().none()
     enrolled_courses = Course.objects.filter(enrollments__student=student_profile).distinct()
     return (
         published_announcements_queryset()
@@ -487,10 +447,13 @@ def student_dashboard(request):
 @permission_classes([IsAuthenticated])
 def student_courses(request):
     require_role(request.user, UserRole.STUDENT)
+    student_profile = getattr(request.user, "student_profile", None)
+    if student_profile is None:
+        return Response({"results": []})
     courses = (
         Course.objects.filter(
-            Q(enrollments__student=request.user.student_profile)
-            | Q(majors=request.user.student_profile.major)
+            Q(enrollments__student=student_profile)
+            | Q(majors=student_profile.major)
         )
         .select_related("semester")
         .distinct()
@@ -502,11 +465,14 @@ def student_courses(request):
 @permission_classes([IsAuthenticated])
 def student_course_detail(request, course_id):
     require_role(request.user, UserRole.STUDENT)
+    student_profile = getattr(request.user, "student_profile", None)
+    if student_profile is None:
+        return Response({"detail": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
     course = (
         Course.objects.filter(id=course_id)
         .filter(
-            Q(enrollments__student=request.user.student_profile)
-            | Q(majors=request.user.student_profile.major)
+            Q(enrollments__student=student_profile)
+            | Q(majors=student_profile.major)
         )
         .select_related("semester")
         .distinct()
@@ -524,7 +490,7 @@ def student_course_detail(request, course_id):
         {
             **serialize_course(course),
             "materials": course_materials_for(course),
-            "assignments": [serialize_assignment(assignment, request.user.student_profile) for assignment in assignments],
+            "assignments": [serialize_assignment(assignment, student_profile) for assignment in assignments],
             "announcements": [serialize_announcement(item) for item in announcements],
         }
     )
@@ -534,16 +500,19 @@ def student_course_detail(request, course_id):
 @permission_classes([IsAuthenticated])
 def student_assignments(request):
     require_role(request.user, UserRole.STUDENT)
+    student_profile = getattr(request.user, "student_profile", None)
+    if student_profile is None:
+        return Response({"results": []})
     assignments = (
         Assignment.objects.filter(
-            course__enrollments__student=request.user.student_profile,
+            course__enrollments__student=student_profile,
             is_published=True,
         )
         .select_related("course")
         .distinct()
         .order_by("due_at")
     )
-    return Response({"results": [serialize_assignment(assignment, request.user.student_profile) for assignment in assignments]})
+    return Response({"results": [serialize_assignment(assignment, student_profile) for assignment in assignments]})
 
 
 @api_view(["POST"])
@@ -551,9 +520,12 @@ def student_assignments(request):
 @parser_classes([MultiPartParser, FormParser])
 def student_submit_assignment(request, assignment_id):
     require_role(request.user, UserRole.STUDENT)
+    student_profile = getattr(request.user, "student_profile", None)
+    if student_profile is None:
+        return Response({"detail": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
     assignment = Assignment.objects.filter(
         id=assignment_id,
-        course__enrollments__student=request.user.student_profile,
+        course__enrollments__student=student_profile,
         is_published=True,
     ).select_related("course").first()
     if assignment is None:
@@ -564,13 +536,13 @@ def student_submit_assignment(request, assignment_id):
 
     submission = Submission.objects.filter(
         assignment=assignment,
-        student=request.user.student_profile,
+        student=student_profile,
         is_deleted=False,
     ).order_by("-submitted_at").first()
     if submission is None:
         submission = Submission(
             assignment=assignment,
-            student=request.user.student_profile,
+            student=student_profile,
         )
     submission.file = upload
     submission.content_text = request.data.get("content_text", "")
@@ -584,9 +556,12 @@ def student_submit_assignment(request, assignment_id):
 @permission_classes([IsAuthenticated])
 def student_grades(request):
     require_role(request.user, UserRole.STUDENT)
+    student_profile = getattr(request.user, "student_profile", None)
+    if student_profile is None:
+        return Response({"overall_average": None, "graded_count": 0, "results": []})
     submissions = (
         Submission.objects.filter(
-            student=request.user.student_profile,
+            student=student_profile,
             is_deleted=False,
         )
         .exclude(score__isnull=True)
@@ -641,7 +616,7 @@ def professor_dashboard(request):
             .order_by("-created_at")[:5]
         )
         recent_submissions = list(
-            Submission.objects.filter(assignment__course__in=courses)
+            Submission.objects.filter(assignment__course__in=courses, is_deleted=False)
             .select_related("assignment__course", "student__user", "group")
             .order_by("-submitted_at")[:5]
         )
@@ -742,6 +717,8 @@ def professor_assignments(request):
         if request.user.role == UserRole.ADMIN:
             assignments = Assignment.objects.select_related("course").order_by("-created_at")
             return Response({"results": [serialize_assignment(assignment) for assignment in assignments]})
+        if not hasattr(request.user, "professor_profile"):
+            return Response({"results": []})
         assignments = (
             Assignment.objects.filter(created_by=request.user.professor_profile)
             .select_related("course")
@@ -967,325 +944,6 @@ def professor_announcement_detail(request, announcement_id):
     announcement.full_clean()
     announcement.save()
     return Response(serialize_announcement(announcement))
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def admin_dashboard(request):
-    require_role(request.user, UserRole.ADMIN)
-    week_start = timezone.now() - timedelta(days=7)
-    users_by_role = {
-        role: User.objects.filter(role=role).count()
-        for role, _label in UserRole.choices
-    }
-    submissions_this_week = Submission.objects.filter(submitted_at__gte=week_start).count()
-    platform_avg_grade = Submission.objects.exclude(score__isnull=True).aggregate(avg=Avg("score"))["avg"]
-    top_courses = []
-    try:
-        top_courses = list(
-            Course.objects.annotate(
-                submission_count=Count(
-                    "assignments__submissions",
-                    filter=Q(assignments__submissions__submitted_at__gte=week_start),
-                )
-            )
-            .filter(submission_count__gt=0)
-            .order_by("-submission_count", "code")[:5]
-        )
-    except Exception:
-        top_courses = []
-    return Response(
-        {
-            "total_users": User.objects.count(),
-            "active_courses": Course.objects.filter(is_active=True).count(),
-            "submissions_this_week": submissions_this_week,
-            "platform_avg_grade": to_float(platform_avg_grade),
-            "users_by_role": users_by_role,
-            "top_courses": [
-                {
-                    "id": str(course.id),
-                    "code": course.code,
-                    "title": course.title,
-                    "submission_count": course.submission_count,
-                }
-                for course in top_courses
-            ],
-        }
-    )
-
-
-@api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
-def admin_users(request):
-    require_role(request.user, UserRole.ADMIN)
-    if request.method == "POST":
-        role = request.data.get("role") or UserRole.STUDENT
-        if role not in dict(UserRole.choices):
-            return Response({"detail": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
-        email = (request.data.get("email") or "").strip()
-        full_name = (request.data.get("full_name") or request.data.get("name") or "").strip()
-        password = request.data.get("password") or "ChangeMe123!"
-        if not email or not full_name:
-            return Response({"detail": "Full name and email are required."}, status=status.HTTP_400_BAD_REQUEST)
-        if User.objects.filter(email__iexact=email).exists():
-            return Response({"detail": "A user with this email already exists."}, status=status.HTTP_400_BAD_REQUEST)
-        user = User.objects.create_user(
-            email=email,
-            password=password,
-            full_name=full_name,
-            role=role,
-            is_active=bool_from_request(request.data.get("is_active", True)),
-        )
-        apply_user_role(user, role, request.data)
-        return Response(serialize_user(user), status=status.HTTP_201_CREATED)
-
-    queryset = User.objects.all().order_by("full_name")
-    role = request.query_params.get("role")
-    search = request.query_params.get("search")
-    if role:
-        queryset = queryset.filter(role=role)
-    if search:
-        queryset = queryset.filter(Q(full_name__icontains=search) | Q(email__icontains=search))
-    return Response({"results": [serialize_user(user) for user in queryset]})
-
-
-@api_view(["PATCH", "DELETE"])
-@permission_classes([IsAuthenticated])
-def admin_user_detail(request, user_id):
-    require_role(request.user, UserRole.ADMIN)
-    user = User.objects.filter(id=user_id).first()
-    if user is None:
-        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-    if request.method == "DELETE":
-        user.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    update_fields = []
-    if "is_active" in request.data:
-        user.is_active = bool_from_request(request.data.get("is_active"))
-        update_fields.append("is_active")
-    if "full_name" in request.data:
-        user.full_name = (request.data.get("full_name") or "").strip()
-        update_fields.append("full_name")
-    if "email" in request.data:
-        email = (request.data.get("email") or "").strip()
-        if email and User.objects.filter(email__iexact=email).exclude(id=user.id).exists():
-            return Response({"detail": "A user with this email already exists."}, status=status.HTTP_400_BAD_REQUEST)
-        user.email = email
-        update_fields.append("email")
-    if request.data.get("password"):
-        user.set_password(request.data.get("password"))
-        update_fields.append("password")
-
-    if update_fields:
-        user.save(update_fields=update_fields)
-    if "role" in request.data:
-        role = request.data.get("role")
-        if role not in dict(UserRole.choices):
-            return Response({"detail": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
-        apply_user_role(user, role, request.data)
-    return Response(serialize_user(user))
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def admin_courses(request):
-    require_role(request.user, UserRole.ADMIN)
-    courses = Course.objects.select_related("semester").all()
-    return Response({"results": [serialize_course(course) for course in courses]})
-
-
-@api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser, JSONParser])
-def admin_announcements(request):
-    require_role(request.user, UserRole.ADMIN)
-    if request.method == "POST":
-        announcement = Announcement(
-            created_by=request.user,
-            title=(request.data.get("title") or "").strip(),
-            content=request.data.get("content") or "",
-            scope=request.data.get("scope") or AnnouncementScope.GLOBAL,
-            status=request.data.get("status") or AnnouncementStatus.PUBLISHED,
-            priority=int(request.data.get("priority") or 0),
-            send_notification=bool_from_request(request.data.get("send_notification", False)),
-        )
-        course_id = request.data.get("course") or request.data.get("course_id")
-        if course_id:
-            announcement.course = Course.objects.filter(id=course_id).first()
-        if request.data.get("publish_date"):
-            announcement.publish_date = parse_datetime(request.data.get("publish_date")) or timezone.now()
-        if request.data.get("expiry_date"):
-            announcement.expiry_date = parse_datetime(request.data.get("expiry_date"))
-        if "attachment" in request.FILES:
-            announcement.attachment = request.FILES["attachment"]
-        announcement.full_clean()
-        announcement.save()
-        return Response(serialize_announcement(announcement), status=status.HTTP_201_CREATED)
-
-    announcements = Announcement.objects.select_related("course", "created_by").order_by("-created_at")
-    return Response({"results": [serialize_announcement(item) for item in announcements]})
-
-
-@api_view(["PATCH", "DELETE"])
-@permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser, JSONParser])
-def admin_announcement_detail(request, announcement_id):
-    require_role(request.user, UserRole.ADMIN)
-    announcement = Announcement.objects.filter(id=announcement_id).select_related("course", "created_by").first()
-    if announcement is None:
-        return Response({"detail": "Announcement not found."}, status=status.HTTP_404_NOT_FOUND)
-    if request.method == "DELETE":
-        announcement.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    for field in ["title", "content", "scope", "status"]:
-        if field in request.data:
-            setattr(announcement, field, request.data.get(field))
-    if "priority" in request.data:
-        announcement.priority = int(request.data.get("priority") or 0)
-    if "send_notification" in request.data:
-        announcement.send_notification = bool_from_request(request.data.get("send_notification"))
-    if "course" in request.data or "course_id" in request.data:
-        course_id = request.data.get("course") or request.data.get("course_id")
-        announcement.course = Course.objects.filter(id=course_id).first() if course_id else None
-    if "publish_date" in request.data:
-        announcement.publish_date = parse_datetime(request.data.get("publish_date")) or announcement.publish_date
-    if "expiry_date" in request.data:
-        expiry_value = request.data.get("expiry_date")
-        announcement.expiry_date = parse_datetime(expiry_value) if expiry_value else None
-    if "attachment" in request.FILES:
-        announcement.attachment = request.FILES["attachment"]
-    announcement.full_clean()
-    announcement.save()
-    return Response(serialize_announcement(announcement))
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def admin_ai_logs(request):
-    require_role(request.user, UserRole.ADMIN)
-    logs = AIQueryLog.objects.select_related("user", "student__user").order_by("-created_at")
-    role = request.query_params.get("role")
-    topic = request.query_params.get("topic")
-    date_from = request.query_params.get("date_from")
-    date_to = request.query_params.get("date_to")
-    if role:
-        logs = logs.filter(user__role=role)
-    if topic:
-        logs = logs.filter(topic__iexact=topic)
-    if date_from:
-        logs = logs.filter(created_at__date__gte=date_from)
-    if date_to:
-        logs = logs.filter(created_at__date__lte=date_to)
-    return Response(
-        {
-            "results": [
-                {
-                    "id": str(log.id),
-                    "user_name": (
-                        log.user.full_name
-                        if log.user_id
-                        else log.student.user.full_name
-                        if log.student_id
-                        else None
-                    ),
-                    "user_email": (
-                        log.user.email
-                        if log.user_id
-                        else log.student.user.email
-                        if log.student_id
-                        else None
-                    ),
-                    "role": (
-                        log.user.role
-                        if log.user_id
-                        else log.student.user.role
-                        if log.student_id
-                        else None
-                    ),
-                    "message_preview": f"{log.query[:117]}..." if len(log.query) > 120 else log.query,
-                    "topic": log.topic or "general",
-                    "tokens_in": log.tokens_in,
-                    "tokens_out": log.tokens_out,
-                    "timestamp": log.created_at.isoformat(),
-                }
-                for log in logs
-            ]
-        }
-    )
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def admin_ai_summary(request):
-    require_role(request.user, UserRole.ADMIN)
-    raw_stats, stats_text = _admin_stats_payload()
-    summary = ask_llm(
-        [{"role": "user", "content": stats_text}],
-        ADMIN_SYSTEM_PROMPT,
-    )
-    return Response(
-        {
-            "summary": summary,
-            "stats": {
-                "total_users": raw_stats["total_users"],
-                "active_students": raw_stats["active_students"],
-                "submissions_this_week": raw_stats["submissions_this_week"],
-                "average_grade": to_float(raw_stats["average_grade"]),
-                "most_active_courses": [
-                    {
-                        "id": str(course.id),
-                        "code": course.code,
-                        "title": course.title,
-                        "submission_count": course.submission_count,
-                    }
-                    for course in raw_stats["most_active_courses"]
-                ],
-            },
-        }
-    )
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def ai_history(request):
-    conversation = _get_existing_or_new_conversation(request.user)
-    messages = conversation.messages.order_by("created_at")
-    return Response(
-        {
-            "conversation_id": str(conversation.id),
-            "messages": [
-                {
-                    "id": str(message.id),
-                    "role": message.role,
-                    "content": message.content,
-                    "references": message.references_json,
-                    "created_at": message.created_at.isoformat(),
-                }
-                for message in messages
-            ],
-        }
-    )
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def ai_chat(request):
-    query = (request.data.get("message") or "").strip()
-    if not query:
-        return Response({"detail": "Message is required."}, status=status.HTTP_400_BAD_REQUEST)
-    conversation, reply = _process_chat_message(request.user, query)
-    return Response({"reply": reply, "conversation_id": str(conversation.id)})
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def ai_clear(request):
-    conversation = _get_existing_or_new_conversation(request.user)
-    conversation.messages.all().delete()
-    return Response({"cleared": True})
-
 
 @api_view(["GET"])
 @permission_classes([AllowAny])

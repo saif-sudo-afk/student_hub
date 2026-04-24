@@ -2,7 +2,6 @@ import {
   BarChart2,
   Bell,
   BookOpen,
-  BrainCircuit,
   ClipboardList,
   LayoutDashboard,
 } from 'lucide-react';
@@ -10,7 +9,6 @@ import {
 const features = [
   { icon: LayoutDashboard, title: 'Role-Based Dashboards', description: 'Dedicated student, professor, and administrator workspaces.' },
   { icon: ClipboardList, title: 'Assignment Management', description: 'Create, review, submit, and track assignments without friction.' },
-  { icon: BrainCircuit, title: 'AI Academic Assistant', description: 'Context-aware AI support for learning, teaching, and analytics.' },
   { icon: BookOpen, title: 'Course Materials', description: 'Keep every file, handout, and learning resource in one place.' },
   { icon: BarChart2, title: 'Grade Tracking', description: 'See performance trends, feedback, and averages in real time.' },
   { icon: Bell, title: 'Smart Announcements', description: 'Publish messages to the right audience with the right priority.' },

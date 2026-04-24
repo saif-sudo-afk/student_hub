@@ -110,14 +110,6 @@ export interface SubmissionSummary {
   course?: string;
 }
 
-export interface AIMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  references: Array<{ title: string; url: string }>;
-  created_at: string;
-}
-
 export interface StudentDashboardData {
   courses_count: number;
   pending_assignments: number;
@@ -207,22 +199,6 @@ export interface AdminDashboardData {
   platform_avg_grade: number | null;
   users_by_role: Record<string, number>;
   top_courses: Array<{ id: string; code: string; title: string; submission_count: number }>;
-}
-
-export interface AdminAISummaryData {
-  summary: string;
-  stats: {
-    total_users: number;
-    active_students: number;
-    submissions_this_week: number;
-    average_grade: number | null;
-    most_active_courses: Array<{ id: string; code: string; title: string; submission_count: number }>;
-  };
-}
-
-export interface AIHistoryResponse {
-  conversation_id: string;
-  messages: AIMessage[];
 }
 
 export interface AuthResponse {

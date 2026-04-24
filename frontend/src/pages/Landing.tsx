@@ -63,12 +63,12 @@ export function LandingPage() {
     'See all deadlines at a glance',
     'Submit assignments with one click',
     'Track grades and feedback in real time',
-    'Ask the AI assistant anything',
+    'Find announcements and course materials quickly',
   ];
   const professorBullets = [
     'Create and publish assignments in seconds',
     'Review and grade submissions in one place',
-    'AI-assisted feedback and exam question generation',
+    'Upload course materials and keep resources organized',
     'Announcements reach the right students automatically',
   ];
 

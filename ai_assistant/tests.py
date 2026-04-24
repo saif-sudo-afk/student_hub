@@ -1,7 +1,8 @@
 from datetime import timedelta
 from types import SimpleNamespace
-from unittest import mock
+from unittest import SkipTest, mock
 
+from django.conf import settings
 from django.contrib import admin
 from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
@@ -9,6 +10,9 @@ from django.utils import timezone
 
 from academics.models import Major, Semester, TermType
 from accounts.models import StudentProfile, User, UserRole
+
+if "ai_assistant" not in settings.INSTALLED_APPS:
+    raise SkipTest("Archived assistant app is not installed.")
 
 from .admin import AIQueryLogAdmin
 from .models import AIConversation, AIMessage, AIQueryLog, AIQueryStatus, FieldOfStudyConfig

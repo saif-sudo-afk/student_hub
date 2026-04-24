@@ -5,7 +5,7 @@ export function LandingFooter() {
         <div>
           <div className="text-xl font-semibold">Student Hub</div>
           <p className="mt-4 text-sm leading-7 text-white/70">
-            The academic platform that brings courses, assignments, and AI support together.
+            The academic platform that brings courses, assignments, resources, and communication together.
           </p>
         </div>
         <div>

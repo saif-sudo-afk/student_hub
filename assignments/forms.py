@@ -39,6 +39,14 @@ class AssignmentCreateForm(forms.ModelForm):
                 timezone.now() + timedelta(days=7)
             ).strftime("%Y-%m-%dT%H:%M")
 
+    def clean(self):
+        cleaned_data = super().clean()
+        due_date = cleaned_data.get("due_date")
+        if due_date is not None:
+            self.instance.due_at = due_date
+            self.instance.open_at = timezone.now()
+        return cleaned_data
+
     def save(self, commit=True):
         assignment = super().save(commit=False)
         assignment.due_at = self.cleaned_data["due_date"]

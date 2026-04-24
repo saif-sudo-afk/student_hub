@@ -12,7 +12,7 @@ const testimonials = [
     institution: 'Faculty of Engineering',
   },
   {
-    quote: 'The AI assistant saves time for both revision and class preparation.',
+    quote: 'Resource uploads and announcements stay organized across every course.',
     author: 'S. Karim',
     role: 'Senior Lecturer',
     institution: 'School of Information Systems',

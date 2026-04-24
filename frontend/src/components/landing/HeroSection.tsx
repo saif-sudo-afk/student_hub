@@ -19,7 +19,7 @@ export function HeroSection() {
             The Academic Platform Built for Modern Education
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-surface/90 md:text-xl">
-            Manage courses, assignments, and AI-powered learning, all in one place.
+            Manage courses, assignments, materials, and announcements in one place.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link to="/register" className="btn-accent px-6 py-3 text-base">
@@ -33,7 +33,7 @@ export function HeroSection() {
             </a>
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            {['AI-Powered', 'Role-Based Access', 'Cloud Storage'].map((item) => (
+            {['Role-Based Access', 'Course Materials', 'Cloud Storage'].map((item) => (
               <span
                 key={item}
                 className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white"

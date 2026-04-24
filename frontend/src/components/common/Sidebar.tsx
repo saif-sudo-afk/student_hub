@@ -2,14 +2,11 @@ import { NavLink } from 'react-router-dom';
 import {
   Bell,
   BookOpen,
-  BrainCircuit,
   ClipboardList,
   LayoutDashboard,
   LogOut,
-  Shield,
   Sparkles,
   UserCog,
-  Users,
 } from 'lucide-react';
 
 import { Avatar } from '@/components/common/Avatar';
@@ -26,7 +23,6 @@ const navByRole: Record<UserRole, Array<{ to: string; label: string; icon: typeo
     { to: '/student/assignments', label: 'Assignments', icon: ClipboardList },
     { to: '/student/grades', label: 'Grades', icon: Sparkles },
     { to: '/student/announcements', label: 'Announcements', icon: Bell },
-    { to: '/student/ai', label: 'AI Assistant', icon: BrainCircuit },
   ],
   professor: [
     { to: '/professor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,16 +30,9 @@ const navByRole: Record<UserRole, Array<{ to: string; label: string; icon: typeo
     { to: '/professor/assignments', label: 'Assignments', icon: ClipboardList },
     { to: '/professor/stats', label: 'Stats', icon: Sparkles },
     { to: '/professor/announcements', label: 'Announcements', icon: Bell },
-    { to: '/professor/ai', label: 'AI Assistant', icon: BrainCircuit },
   ],
   admin: [
-    { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/admin/users', label: 'Students', icon: Users },
-    { to: '/admin/professors', label: 'Professors', icon: UserCog },
-    { to: '/admin/courses', label: 'Courses', icon: BookOpen },
-    { to: '/admin/announcements', label: 'Announcements', icon: Bell },
-    { to: '/admin/ai-logs', label: 'AI Logs', icon: Shield },
-    { to: '/admin/ai-analytics', label: 'AI Analytics', icon: BrainCircuit },
+    { to: '/admin/', label: 'Django Admin', icon: UserCog },
   ],
 };
 

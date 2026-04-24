@@ -4,7 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuthStore } from '@/store/authStore';
-import { getDashboardPath } from '@/utils/routes';
+import { getDashboardPath, getDjangoAdminUrl } from '@/utils/routes';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -46,6 +46,10 @@ export function LoginPage() {
     setError('');
     try {
       const user = await login(email, password);
+      if (user.role === 'admin') {
+        window.location.assign(getDjangoAdminUrl());
+        return;
+      }
       navigate(getDashboardPath(user.role), { replace: true });
     } catch (loginError) {
       setError(getLoginErrorMessage(loginError));
@@ -124,7 +128,7 @@ export function LoginPage() {
                 <Link to="/register" className="font-medium text-primary-light">
                   Create student account
                 </Link>
-                <a href="#" className="font-medium text-primary-light">
+                <a href="/admin/password-reset/" className="font-medium text-primary-light">
                   Forgot password?
                 </a>
               </div>

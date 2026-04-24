@@ -19,14 +19,13 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView
+from django.contrib.auth import views as auth_views
 
 from common.views import health
 
 admin.site.site_header = "Student Hub Admin"
 admin.site.site_title = "Student Hub Admin"
 admin.site.index_title = "Platform control center"
-admin.site.index_template = "admin/index.html"
-admin.site.login_template = "admin/login.html"
 
 urlpatterns = [
     path("health/", health, name="health"),
@@ -35,11 +34,6 @@ urlpatterns = [
     path("server/professor/", include(("accounts.professor_urls", "professor"), namespace="professor")),
     path("courses/", include("courses.urls")),
     path("assignments/", include("assignments.urls")),
-    path("ai/", include("ai_assistant.urls")),
-    path(
-        "admin-panel/",
-        include(("ai_assistant.admin_panel_urls", "admin_panel_ai"), namespace="admin_panel_ai"),
-    ),
     path(
         "announcements/",
         include(
@@ -48,9 +42,41 @@ urlpatterns = [
         ),
     ),
     path("communication/", include("communications.urls")),
-    path('django-admin/', admin.site.urls),
+    path(
+        "admin/password-reset/",
+        auth_views.PasswordResetView.as_view(
+            template_name="accounts/password_reset_form.html",
+            email_template_name="accounts/password_reset_email.html",
+            subject_template_name="accounts/password_reset_subject.txt",
+            success_url="/admin/password-reset/done/",
+        ),
+        name="admin_password_reset",
+    ),
+    path(
+        "admin/password-reset/done/",
+        auth_views.PasswordResetDoneView.as_view(
+            template_name="accounts/password_reset_done.html"
+        ),
+        name="password_reset_done",
+    ),
+    path(
+        "admin/reset/<uidb64>/<token>/",
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name="accounts/password_reset_confirm.html",
+            success_url="/admin/reset/done/",
+        ),
+        name="password_reset_confirm",
+    ),
+    path(
+        "admin/reset/done/",
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name="accounts/password_reset_complete.html"
+        ),
+        name="password_reset_complete",
+    ),
+    path("admin/", admin.site.urls),
     re_path(
-        r"^(?!api/|django-admin/|accounts/|server/professor/|courses/|assignments/|ai/|admin-panel/|announcements/|communication/|health/|static/|media/).*$",
+        r"^(?!api/|admin/|accounts/|server/professor/|courses/|assignments/|announcements/|communication/|health/|static/|media/).*$",
         TemplateView.as_view(template_name="index.html"),
     ),
 ]

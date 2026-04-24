@@ -11,20 +11,11 @@ const titleMap: Record<string, string> = {
   '/student/assignments': 'Assignments',
   '/student/grades': 'Grades',
   '/student/announcements': 'Announcements',
-  '/student/ai': 'AI Assistant',
   '/professor/dashboard': 'Professor Dashboard',
   '/professor/courses': 'Courses',
   '/professor/assignments': 'Assignments',
   '/professor/stats': 'Statistics',
   '/professor/announcements': 'Announcements',
-  '/professor/ai': 'AI Assistant',
-  '/admin/dashboard': 'Admin Dashboard',
-  '/admin/users': 'Students',
-  '/admin/professors': 'Professors',
-  '/admin/courses': 'Courses',
-  '/admin/announcements': 'Announcements',
-  '/admin/ai-logs': 'AI Logs',
-  '/admin/ai-analytics': 'AI Analytics',
 };
 
 export function Topbar() {

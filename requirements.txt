@@ -6,7 +6,6 @@ whitenoise
 gunicorn
 cloudinary
 django-cloudinary-storage
-anthropic
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers

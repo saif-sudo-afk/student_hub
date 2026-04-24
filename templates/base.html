@@ -100,15 +100,12 @@
     {% url 'accounts:dashboard' as dashboard_url %}
     {% url 'professor:dashboard' as professor_dashboard_url %}
     {% url 'professor:stats' as professor_stats_url %}
-    {% url 'professor:assistant' as professor_assistant_url %}
     {% url 'courses:course_list' as course_list_url %}
     {% url 'courses:material_list' as material_list_url %}
     {% url 'assignments:assignment_list' as assignment_list_url %}
     {% url 'communications:announcement_list' as announcement_list_url %}
     {% url 'professor_announcements:list' as professor_announcement_list_url %}
     {% url 'communications:calendar_list' as calendar_list_url %}
-    {% url 'ai_assistant:assistant' as assistant_url %}
-    {% url 'admin_panel_ai:dashboard' as admin_ai_dashboard_url %}
 
     <div class="min-h-screen lg:grid lg:grid-cols-[280px_1fr]">
         {% if request.user.is_authenticated %}
@@ -125,13 +122,9 @@
                     <a href="{{ calendar_list_url }}" class="nav-link {% if request.path == calendar_list_url %}nav-link-active{% endif %}">Calendar</a>
                     {% if request.user.role == 'professor' %}
                         <a href="{{ professor_stats_url }}" class="nav-link {% if request.path == professor_stats_url %}nav-link-active{% endif %}">Stats</a>
-                        <a href="{{ professor_assistant_url }}" class="nav-link {% if request.path == professor_assistant_url %}nav-link-active{% endif %}">AI Assistant</a>
-                    {% endif %}
-                    {% if request.user.role == 'student' %}
-                        <a href="{{ assistant_url }}" class="nav-link {% if request.path == assistant_url %}nav-link-active{% endif %}">AI Assistant</a>
                     {% endif %}
                     {% if request.user.role == 'admin' %}
-                        <a href="{{ admin_ai_dashboard_url }}" class="nav-link {% if request.path == admin_ai_dashboard_url %}nav-link-active{% endif %}">AI Analytics</a>
+                        <a href="{% url 'admin:index' %}" class="nav-link">Django Admin</a>
                     {% endif %}
                 </nav>
                 <div class="mt-auto glass rounded-xl p-3 text-xs text-slate-300">
@@ -155,8 +148,16 @@
                         <p class="text-sm text-slate-400">{% block page_subtitle %}Academic workspace{% endblock %}</p>
                     </div>
                     {% if request.user.is_authenticated %}
-                        <div class="glass-soft rounded-xl px-4 py-2 text-sm text-slate-300">
-                            {{ request.user.full_name }}
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" onclick="history.back()" class="glass-soft rounded-xl px-4 py-2 text-sm text-slate-300 transition hover:text-white">
+                                Back
+                            </button>
+                            <a href="{% if request.user.role == 'professor' %}{{ professor_dashboard_url }}{% else %}{{ dashboard_url }}{% endif %}" class="glass-soft rounded-xl px-4 py-2 text-sm text-slate-300 transition hover:text-white">
+                                Home
+                            </a>
+                            <div class="glass-soft rounded-xl px-4 py-2 text-sm text-slate-300">
+                                {{ request.user.full_name }}
+                            </div>
                         </div>
                     {% endif %}
                 </div>
@@ -170,13 +171,9 @@
                         <a href="{{ calendar_list_url }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm {% if request.path == calendar_list_url %}bg-cyan-500/15 text-cyan-200{% else %}bg-slate-900 text-slate-300{% endif %}">Calendar</a>
                         {% if request.user.role == 'professor' %}
                             <a href="{{ professor_stats_url }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm {% if request.path == professor_stats_url %}bg-cyan-500/15 text-cyan-200{% else %}bg-slate-900 text-slate-300{% endif %}">Stats</a>
-                            <a href="{{ professor_assistant_url }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm {% if request.path == professor_assistant_url %}bg-cyan-500/15 text-cyan-200{% else %}bg-slate-900 text-slate-300{% endif %}">AI Assistant</a>
-                        {% endif %}
-                        {% if request.user.role == 'student' %}
-                            <a href="{{ assistant_url }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm {% if request.path == assistant_url %}bg-cyan-500/15 text-cyan-200{% else %}bg-slate-900 text-slate-300{% endif %}">AI Assistant</a>
                         {% endif %}
                         {% if request.user.role == 'admin' %}
-                            <a href="{{ admin_ai_dashboard_url }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm {% if request.path == admin_ai_dashboard_url %}bg-cyan-500/15 text-cyan-200{% else %}bg-slate-900 text-slate-300{% endif %}">AI Analytics</a>
+                            <a href="{% url 'admin:index' %}" class="whitespace-nowrap rounded-lg bg-slate-900 px-3 py-2 text-sm text-slate-300">Django Admin</a>
                         {% endif %}
                     </div>
                 {% endif %}

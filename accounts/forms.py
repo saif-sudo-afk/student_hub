@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
+from django.db import transaction
 
 from academics.models import Major
 
@@ -43,12 +44,13 @@ class StudentRegistrationForm(forms.ModelForm):
         user.role = UserRole.STUDENT
         user.set_password(self.cleaned_data["password1"])
         if commit:
-            user.save()
-            StudentProfile.objects.create(
-                user=user,
-                major=self.cleaned_data["major"],
-                student_number=self.cleaned_data.get("student_number") or generate_student_number(),
-            )
+            with transaction.atomic():
+                user.save()
+                StudentProfile.objects.create(
+                    user=user,
+                    major=self.cleaned_data["major"],
+                    student_number=self.cleaned_data.get("student_number") or generate_student_number(),
+                )
         return user
 
 

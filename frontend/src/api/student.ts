@@ -1,6 +1,5 @@
 import { client } from '@/api/client';
 import type {
-  AIHistoryResponse,
   ApiListResponse,
   AnnouncementSummary,
   AssignmentSummary,
@@ -52,9 +51,4 @@ export async function getStudentGrades() {
 export async function getStudentAnnouncements() {
   const response = await client.get<ApiListResponse<AnnouncementSummary>>('/api/student/announcements/');
   return response.data.results;
-}
-
-export async function getStudentAIHistory() {
-  const response = await client.get<AIHistoryResponse>('/api/ai/history/');
-  return response.data;
 }

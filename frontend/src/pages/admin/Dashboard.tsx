@@ -2,6 +2,7 @@ import { Activity, BookOpen, FileText, Users } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 
 import { getAdminAISummary, getAdminDashboard } from '@/api/admin';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Spinner } from '@/components/common/Spinner';
 import { StatCard } from '@/components/common/StatCard';
 import { useApiQuery } from '@/hooks/useApi';
@@ -12,6 +13,16 @@ const roleColors = [themeTokens.colors.primaryLight, themeTokens.colors.accent, 
 export function AdminDashboardPage() {
   const dashboardQuery = useApiQuery(['admin-dashboard'], getAdminDashboard);
   const summaryQuery = useApiQuery(['admin-ai-summary-inline'], getAdminAISummary);
+
+  if (dashboardQuery.isError) {
+    return (
+      <ErrorState
+        title="Admin dashboard could not load"
+        description="The admin dashboard request failed. Check the backend logs if this keeps happening."
+        onAction={() => dashboardQuery.refetch()}
+      />
+    );
+  }
 
   if (dashboardQuery.isLoading || !dashboardQuery.data) {
     return <Spinner label="Loading admin dashboard..." />;

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
 import { getAdminAILogs } from '@/api/admin';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Spinner } from '@/components/common/Spinner';
 import { Table } from '@/components/common/Table';
 import { useApiQuery } from '@/hooks/useApi';
@@ -21,10 +23,6 @@ export function AdminAILogsPage() {
     }),
   );
 
-  if (logsQuery.isLoading || !logsQuery.data) {
-    return <Spinner label="Loading AI logs..." />;
-  }
-
   return (
     <div className="space-y-6">
       <section className="section-shell grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -38,18 +36,30 @@ export function AdminAILogsPage() {
         <input type="date" className="form-input" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
         <input type="date" className="form-input" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
       </section>
-      <Table headers={['User', 'Message Preview', 'Topic', 'Tokens In', 'Tokens Out', 'Timestamp']}>
-        {logsQuery.data.map((log) => (
-          <tr key={log.id}>
-            <td className="table-cell font-medium">{log.user_name ?? log.user_email ?? 'Unknown'}</td>
-            <td className="table-cell text-text-secondary">{log.message_preview}</td>
-            <td className="table-cell text-text-secondary">{log.topic}</td>
-            <td className="table-cell">{log.tokens_in}</td>
-            <td className="table-cell">{log.tokens_out}</td>
-            <td className="table-cell text-text-secondary">{formatDate(log.timestamp)}</td>
-          </tr>
-        ))}
-      </Table>
+      {logsQuery.isError ? (
+        <ErrorState
+          title="AI logs could not load"
+          description="The admin AI logs request failed. Check the backend logs if this keeps happening."
+          onAction={() => logsQuery.refetch()}
+        />
+      ) : logsQuery.isLoading || !logsQuery.data ? (
+        <Spinner label="Loading AI logs..." />
+      ) : logsQuery.data.length === 0 ? (
+        <EmptyState title="No AI logs" description="AI requests will appear here after users start conversations." />
+      ) : (
+        <Table headers={['User', 'Message Preview', 'Topic', 'Tokens In', 'Tokens Out', 'Timestamp']}>
+          {logsQuery.data.map((log) => (
+            <tr key={log.id}>
+              <td className="table-cell font-medium">{log.user_name ?? log.user_email ?? 'Unknown'}</td>
+              <td className="table-cell text-text-secondary">{log.message_preview}</td>
+              <td className="table-cell text-text-secondary">{log.topic}</td>
+              <td className="table-cell">{log.tokens_in}</td>
+              <td className="table-cell">{log.tokens_out}</td>
+              <td className="table-cell text-text-secondary">{formatDate(log.timestamp)}</td>
+            </tr>
+          ))}
+        </Table>
+      )}
     </div>
   );
 }

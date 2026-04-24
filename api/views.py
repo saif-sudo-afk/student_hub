@@ -177,6 +177,7 @@ def serialize_assignment(assignment, student_profile=None):
 
 
 def serialize_announcement(announcement):
+    publish_date = announcement.publish_date or announcement.created_at
     return {
         "id": str(announcement.id),
         "title": announcement.title,
@@ -184,7 +185,7 @@ def serialize_announcement(announcement):
         "scope": announcement.scope,
         "status": announcement.status,
         "priority": announcement.priority,
-        "publish_date": announcement.publish_date.isoformat(),
+        "publish_date": publish_date.isoformat() if publish_date else None,
         "expiry_date": announcement.expiry_date.isoformat() if announcement.expiry_date else None,
         "attachment_url": file_url(announcement.attachment),
         "course": {
@@ -931,7 +932,7 @@ def admin_announcements(request):
 @permission_classes([IsAuthenticated])
 def admin_ai_logs(request):
     require_role(request.user, UserRole.ADMIN)
-    logs = AIQueryLog.objects.select_related("user").order_by("-created_at")
+    logs = AIQueryLog.objects.select_related("user", "student__user").order_by("-created_at")
     role = request.query_params.get("role")
     topic = request.query_params.get("topic")
     date_from = request.query_params.get("date_from")
@@ -949,9 +950,27 @@ def admin_ai_logs(request):
             "results": [
                 {
                     "id": str(log.id),
-                    "user_name": log.user.full_name if log.user_id else None,
-                    "user_email": log.user.email if log.user_id else None,
-                    "role": log.user.role if log.user_id else None,
+                    "user_name": (
+                        log.user.full_name
+                        if log.user_id
+                        else log.student.user.full_name
+                        if log.student_id
+                        else None
+                    ),
+                    "user_email": (
+                        log.user.email
+                        if log.user_id
+                        else log.student.user.email
+                        if log.student_id
+                        else None
+                    ),
+                    "role": (
+                        log.user.role
+                        if log.user_id
+                        else log.student.user.role
+                        if log.student_id
+                        else None
+                    ),
                     "message_preview": f"{log.query[:117]}..." if len(log.query) > 120 else log.query,
                     "topic": log.topic or "general",
                     "tokens_in": log.tokens_in,

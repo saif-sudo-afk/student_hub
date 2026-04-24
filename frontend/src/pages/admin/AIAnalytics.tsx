@@ -1,9 +1,20 @@
 import { getAdminAISummary } from '@/api/admin';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Spinner } from '@/components/common/Spinner';
 import { useApiQuery } from '@/hooks/useApi';
 
 export function AdminAIAnalyticsPage() {
   const summaryQuery = useApiQuery(['admin-ai-summary-page'], getAdminAISummary);
+
+  if (summaryQuery.isError) {
+    return (
+      <ErrorState
+        title="AI analytics could not load"
+        description="The admin AI analytics request failed. Check the backend logs if this keeps happening."
+        onAction={() => summaryQuery.refetch()}
+      />
+    );
+  }
 
   if (summaryQuery.isLoading || !summaryQuery.data) {
     return <Spinner label="Loading AI analytics..." />;

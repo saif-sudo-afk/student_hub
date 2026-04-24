@@ -1,4 +1,6 @@
 import { getAdminAnnouncements } from '@/api/admin';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Spinner } from '@/components/common/Spinner';
 import { Table } from '@/components/common/Table';
 import { useApiQuery } from '@/hooks/useApi';
@@ -7,8 +9,22 @@ import { formatDate } from '@/utils/formatDate';
 export function AdminAnnouncementsPage() {
   const announcementsQuery = useApiQuery(['admin-announcements'], getAdminAnnouncements);
 
+  if (announcementsQuery.isError) {
+    return (
+      <ErrorState
+        title="Announcements could not load"
+        description="The admin announcements request failed. Check the backend logs if this keeps happening."
+        onAction={() => announcementsQuery.refetch()}
+      />
+    );
+  }
+
   if (announcementsQuery.isLoading || !announcementsQuery.data) {
     return <Spinner label="Loading announcements..." />;
+  }
+
+  if (announcementsQuery.data.length === 0) {
+    return <EmptyState title="No announcements" description="Published announcements will appear here." />;
   }
 
   return (

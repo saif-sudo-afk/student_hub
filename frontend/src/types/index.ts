@@ -87,7 +87,7 @@ export interface AnnouncementSummary {
   scope: string;
   status: string;
   priority: number;
-  publish_date: string;
+  publish_date: string | null;
   expiry_date: string | null;
   attachment_url: string | null;
   course: { id: string; code: string; title: string } | null;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { AxiosError } from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -14,14 +15,34 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
+  function getLoginErrorMessage(loginError: unknown) {
+    if (
+      typeof loginError === 'object' &&
+      loginError !== null &&
+      'response' in loginError &&
+      typeof (loginError as AxiosError).response?.data === 'object' &&
+      (loginError as AxiosError).response?.data !== null &&
+      'detail' in ((loginError as AxiosError).response?.data as Record<string, unknown>) &&
+      typeof ((loginError as AxiosError).response?.data as Record<string, unknown>).detail === 'string'
+    ) {
+      return ((loginError as AxiosError).response?.data as Record<string, string>).detail;
+    }
+
+    if (typeof loginError === 'object' && loginError !== null && 'request' in loginError) {
+      return 'Unable to reach the server. Check the deployment configuration and try again.';
+    }
+
+    return 'Sign-in failed. Try again.';
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     try {
       const user = await login(email, password);
       navigate(getDashboardPath(user.role), { replace: true });
-    } catch {
-      setError('Invalid email or password.');
+    } catch (loginError) {
+      setError(getLoginErrorMessage(loginError));
     }
   }
 

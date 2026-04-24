@@ -2,7 +2,6 @@ from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from django.contrib.auth import authenticate
 from django.db.models import Avg, Count, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -107,6 +106,19 @@ def serialize_major(major):
         "name": major.name,
         "code": major.code,
     }
+
+
+def authenticate_api_user(email, password):
+    normalized_email = (email or "").strip()
+    if not normalized_email or not password:
+        return None
+
+    user = User.objects.filter(email__iexact=normalized_email).first()
+    if user is None or not user.is_active:
+        return None
+    if not user.check_password(password):
+        return None
+    return user
 
 
 def serialize_material_item(material):
@@ -270,7 +282,7 @@ def course_materials_for(course):
 def auth_login(request):
     email = (request.data.get("email") or "").strip()
     password = request.data.get("password") or ""
-    user = authenticate(request=request, email=email, password=password)
+    user = authenticate_api_user(email, password)
     if user is None or not user.is_active:
         return Response({"detail": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
 

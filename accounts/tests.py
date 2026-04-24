@@ -42,6 +42,27 @@ class UserRoleSyncTests(TestCase):
         self.assertTrue(user.check_password("testpass123"))
         self.assertTrue(user.student_profile.student_number.startswith("STU-"))
 
+    def test_api_login_accepts_case_insensitive_email_lookup(self):
+        user = User.objects.create_user(
+            email="MixedCaseUser@example.com",
+            password="testpass123",
+            full_name="Mixed Case User",
+            role=UserRole.STUDENT,
+        )
+
+        response = self.client.post(
+            "/api/auth/login/",
+            data={
+                "email": "mixedcaseuser@example.com",
+                "password": "testpass123",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["id"], str(user.id))
+        self.assertEqual(response.json()["user"]["email"], user.email)
+
     def test_role_changes_sync_groups_and_staff_flags(self):
         user = User.objects.create_user(
             email="prof@example.com",

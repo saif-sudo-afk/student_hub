@@ -2,11 +2,12 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 const ACCESS_TOKEN_KEY = 'student-hub.access-token';
 const REFRESH_TOKEN_KEY = 'student-hub.refresh-token';
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 
 type RetryableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8000',
+  baseURL: API_BASE_URL,
   withCredentials: false,
 });
 
@@ -36,10 +37,7 @@ async function refreshAccessToken() {
   }
   if (!refreshPromise) {
     refreshPromise = axios
-      .post<{ access: string }>(
-        `${import.meta.env.VITE_API_URL ?? 'http://localhost:8000'}/api/auth/refresh/`,
-        { refresh },
-      )
+      .post<{ access: string }>(`${API_BASE_URL}/api/auth/refresh/`, { refresh })
       .then((response) => {
         setAccessToken(response.data.access);
         return response.data.access;

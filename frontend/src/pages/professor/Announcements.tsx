@@ -18,7 +18,6 @@ export function ProfessorAnnouncementsPage() {
   const [content, setContent] = useState('');
   const [scope, setScope] = useState('course');
   const [courseId, setCourseId] = useState('');
-  const [targetRole, setTargetRole] = useState('all');
   const [status, setStatus] = useState('published');
   const [priority, setPriority] = useState('0');
   const [publishDate, setPublishDate] = useState('');
@@ -36,7 +35,6 @@ export function ProfessorAnnouncementsPage() {
       formData.append('content', content);
       formData.append('scope', scope);
       formData.append('course', scope === 'course' ? courseId : '');
-      formData.append('target_role', scope === 'role' ? targetRole : 'all');
       formData.append('status', status);
       formData.append('priority', priority);
       if (publishDate) formData.append('publish_date', publishDate);
@@ -54,7 +52,6 @@ export function ProfessorAnnouncementsPage() {
       setContent('');
       setScope('course');
       setCourseId('');
-      setTargetRole('all');
       setStatus('published');
       setPriority('0');
       setPublishDate('');
@@ -88,7 +85,6 @@ export function ProfessorAnnouncementsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <select className="form-input" value={scope} onChange={(event) => setScope(event.target.value)}>
               <option value="course">Course</option>
-              <option value="role">Role</option>
               <option value="global">Global</option>
             </select>
             {scope === 'course' ? (
@@ -100,14 +96,7 @@ export function ProfessorAnnouncementsPage() {
                   </option>
                 ))}
               </select>
-            ) : (
-              <select className="form-input" value={targetRole} onChange={(event) => setTargetRole(event.target.value)}>
-                <option value="all">All</option>
-                <option value="students">Students</option>
-                <option value="professors">Professors</option>
-                <option value="admins">Admins</option>
-              </select>
-            )}
+            ) : null}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <input type="datetime-local" className="form-input" value={publishDate} onChange={(event) => setPublishDate(event.target.value)} />
@@ -144,7 +133,6 @@ export function ProfessorAnnouncementsPage() {
                   setContent('');
                   setScope('course');
                   setCourseId('');
-                  setTargetRole('all');
                   setStatus('published');
                   setPriority('0');
                   setPublishDate('');
@@ -182,7 +170,6 @@ export function ProfessorAnnouncementsPage() {
                       setContent(announcement.content);
                       setScope(announcement.scope);
                       setCourseId(announcement.course?.id ?? '');
-                      setTargetRole(announcement.target_role);
                       setStatus(announcement.status);
                       setPriority(String(announcement.priority));
                       setPublishDate(announcement.publish_date ?? '');

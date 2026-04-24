@@ -102,6 +102,10 @@ ROLE_PERMISSION_CODENAMES = {
 
 
 def _ensure_group_permissions(group, role):
+    if role == UserRole.ADMIN:
+        group.permissions.set(Permission.objects.all())
+        return
+
     permissions = Permission.objects.filter(
         codename__in=ROLE_PERMISSION_CODENAMES.get(role, [])
     )

@@ -70,12 +70,13 @@ def serialize_user(user):
         "name": user.full_name,
         "email": user.email,
         "role": user.role,
+        "is_active": user.is_active,
         "avatar": None,
         "joined": user.date_joined.isoformat(),
         "student_profile": {
             "id": str(student_profile.id),
             "student_number": student_profile.student_number,
-            "major": student_profile.major.name,
+            "major": student_profile.major.name if student_profile.major_id else "",
             "semester": student_profile.current_semester.name if student_profile.current_semester else None,
         }
         if student_profile
@@ -183,7 +184,6 @@ def serialize_announcement(announcement):
         "title": announcement.title,
         "content": announcement.content,
         "scope": announcement.scope,
-        "target_role": getattr(announcement, "target_role", "all"),
         "status": announcement.status,
         "priority": announcement.priority,
         "publish_date": publish_date.isoformat() if publish_date else None,
@@ -198,7 +198,6 @@ def serialize_announcement(announcement):
         else None,
         "created_by": announcement.created_by.full_name if announcement.created_by_id else None,
         "created_at": announcement.created_at.isoformat() if announcement.created_at else None,
-        "last_updated_by": announcement.last_updated_by.full_name if getattr(announcement, "last_updated_by_id", None) else None,
         "updated_at": announcement.updated_at.isoformat() if announcement.updated_at else None,
     }
 
@@ -254,7 +253,6 @@ def student_announcements_queryset(user):
         published_announcements_queryset()
         .filter(
             Q(scope=AnnouncementScope.GLOBAL)
-            | Q(scope=AnnouncementScope.ROLE, target_role="students")
             | Q(scope=AnnouncementScope.COURSE, course__in=enrolled_courses)
             | Q(scope=AnnouncementScope.GROUP, target_audience__members=student_profile)
         )
@@ -331,7 +329,14 @@ def auth_register_student(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    user = form.save()
+    try:
+        user = form.save()
+    except Exception:
+        return Response(
+            {"detail": "Registration failed while creating the student account."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    user.refresh_from_db()
     return Response(serialize_auth_payload(user), status=status.HTTP_201_CREATED)
 
 
@@ -359,7 +364,19 @@ def auth_me(request):
 @permission_classes([IsAuthenticated])
 def student_dashboard(request):
     require_role(request.user, UserRole.STUDENT)
-    student_profile = request.user.student_profile
+    student_profile = getattr(request.user, "student_profile", None)
+    if student_profile is None:
+        return Response(
+            {
+                "courses_count": 0,
+                "pending_assignments": 0,
+                "average_grade": None,
+                "upcoming_deadlines_count": 0,
+                "deadlines": [],
+                "announcements": [],
+                "recent_courses": [],
+            }
+        )
     enrollments = Enrollment.objects.filter(student=student_profile).select_related("course__semester")
     courses = [enrollment.course for enrollment in enrollments]
     course_ids = [course.id for course in courses]
@@ -368,7 +385,7 @@ def student_dashboard(request):
         .select_related("course")
         .order_by("due_at")
     )
-    submissions = Submission.objects.filter(student=student_profile, is_deleted=False).select_related("assignment__course")
+    submissions = Submission.objects.filter(student=student_profile).select_related("assignment__course")
     submitted_assignment_ids = set(submissions.values_list("assignment_id", flat=True))
     pending_assignments = [assignment for assignment in assignments if assignment.id not in submitted_assignment_ids]
     upcoming_deadlines = []
@@ -399,7 +416,13 @@ def student_dashboard(request):
         )
 
     average_grade = submissions.exclude(score__isnull=True).aggregate(avg=Avg("score"))["avg"]
-    announcements = [serialize_announcement(item) for item in student_announcements_queryset(request.user).order_by("-priority", "-publish_date")[:5]]
+    try:
+        announcements = [
+            serialize_announcement(item)
+            for item in student_announcements_queryset(request.user).order_by("-priority", "-publish_date")[:5]
+        ]
+    except Exception:
+        announcements = []
     return Response(
         {
             "courses_count": len(courses),
@@ -560,33 +583,33 @@ def student_announcements(request):
 def professor_dashboard(request):
     require_role(request.user, UserRole.PROFESSOR)
     courses = _professor_courses(request.user)
-    recent_assignments = (
-        Assignment.objects.filter(course__in=courses)
-        .select_related("course")
-        .annotate(
-            submission_count=Count(
-                "submissions",
-                filter=Q(submissions__is_deleted=False),
-            )
+    recent_assignments = []
+    recent_submissions = []
+    pending_submissions = 0
+    try:
+        recent_assignments = list(
+            Assignment.objects.filter(course__in=courses)
+            .select_related("course")
+            .annotate(submission_count=Count("submissions"))
+            .order_by("-created_at")[:5]
         )
-        .order_by("-created_at")[:5]
-    )
-    recent_submissions = (
-        Submission.objects.filter(
+        recent_submissions = list(
+            Submission.objects.filter(assignment__course__in=courses)
+            .select_related("assignment__course", "student__user", "group")
+            .order_by("-submitted_at")[:5]
+        )
+        pending_submissions = Submission.objects.filter(
             assignment__course__in=courses,
-            is_deleted=False,
-        )
-        .select_related("assignment__course", "student__user", "group")
-        .order_by("-submitted_at")[:5]
-    )
+            status=SubmissionStatus.PENDING,
+        ).count()
+    except Exception:
+        recent_assignments = []
+        recent_submissions = []
+        pending_submissions = 0
     return Response(
         {
             "courses_count": courses.count(),
-            "pending_submissions": Submission.objects.filter(
-                assignment__course__in=courses,
-                is_deleted=False,
-                status=SubmissionStatus.PENDING,
-            ).count(),
+            "pending_submissions": pending_submissions,
             "enrolled_students": Enrollment.objects.filter(
                 course__in=courses,
                 status=EnrollmentStatus.ACTIVE,
@@ -839,7 +862,6 @@ def professor_announcements(request):
         raise ValidationError(form.errors)
     announcement = form.save(commit=False)
     announcement.created_by = request.user
-    announcement.last_updated_by = request.user
     announcement.save()
     form.save_m2m()
     return Response(serialize_announcement(announcement), status=status.HTTP_201_CREATED)
@@ -858,7 +880,7 @@ def professor_announcement_detail(request, announcement_id):
         announcement.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    for field in ["title", "content", "scope", "target_role", "status"]:
+    for field in ["title", "content", "scope", "status"]:
         if field in request.data:
             setattr(announcement, field, request.data.get(field))
     if "priority" in request.data:
@@ -875,7 +897,6 @@ def professor_announcement_detail(request, announcement_id):
         announcement.expiry_date = parse_datetime(expiry_value) if expiry_value else None
     if "attachment" in request.FILES:
         announcement.attachment = request.FILES["attachment"]
-    announcement.last_updated_by = request.user
     announcement.full_clean()
     announcement.save()
     return Response(serialize_announcement(announcement))
@@ -944,10 +965,26 @@ def admin_users(request):
 @permission_classes([IsAuthenticated])
 def admin_user_detail(request, user_id):
     require_role(request.user, UserRole.ADMIN)
-    return Response(
-        {"detail": "Role changes are not available from the admin dashboard."},
-        status=status.HTTP_405_METHOD_NOT_ALLOWED,
-    )
+    if "role" in request.data:
+        return Response(
+            {"detail": "Role changes are not available from the admin dashboard."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    user = User.objects.filter(id=user_id).first()
+    if user is None:
+        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    update_fields = []
+    if "is_active" in request.data:
+        user.is_active = str(request.data.get("is_active")).lower() in {"1", "true", "yes", "on"}
+        update_fields.append("is_active")
+    if "full_name" in request.data:
+        user.full_name = (request.data.get("full_name") or "").strip()
+        update_fields.append("full_name")
+
+    if update_fields:
+        user.save(update_fields=update_fields)
+    return Response(serialize_user(user))
 
 
 @api_view(["GET"])

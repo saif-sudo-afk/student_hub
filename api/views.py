@@ -1,6 +1,5 @@
 from datetime import timedelta
 from decimal import Decimal
-from uuid import uuid4
 
 from django.db.models import Avg, Count, Q
 from django.conf import settings
@@ -906,27 +905,10 @@ def admin_users(request):
 @permission_classes([IsAuthenticated])
 def admin_user_detail(request, user_id):
     require_role(request.user, UserRole.ADMIN)
-    user = User.objects.filter(id=user_id).first()
-    if user is None:
-        raise PermissionDenied("User not found.")
-    role = request.data.get("role")
-    if role not in dict(UserRole.choices):
-        return Response({"detail": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
-    if role == UserRole.STUDENT and not hasattr(user, "student_profile"):
-        return Response(
-            {"detail": "Cannot switch a user to student without an existing student profile."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    if role == UserRole.PROFESSOR and not hasattr(user, "professor_profile"):
-        ProfessorProfile.objects.create(
-            user=user,
-            department="To be assigned",
-            employee_code=f"EMP-{uuid4().hex[:8].upper()}",
-        )
-    user.role = role
-    user.save(update_fields=["role"])
-    user.refresh_from_db()
-    return Response(serialize_user(user))
+    return Response(
+        {"detail": "Role changes are not available from the admin dashboard."},
+        status=status.HTTP_405_METHOD_NOT_ALLOWED,
+    )
 
 
 @api_view(["GET"])

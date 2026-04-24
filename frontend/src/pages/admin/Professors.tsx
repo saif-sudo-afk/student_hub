@@ -7,12 +7,14 @@ import { Table } from '@/components/common/Table';
 import { useApiQuery } from '@/hooks/useApi';
 import { formatDate } from '@/utils/formatDate';
 
-export function AdminUsersPage() {
+export function AdminProfessorsPage() {
   const [search, setSearch] = useState('');
-  const usersQuery = useApiQuery(['admin-users', 'student', search], () => getAdminUsers({ role: 'student', search: search || undefined }));
+  const professorsQuery = useApiQuery(['admin-users', 'professor', search], () =>
+    getAdminUsers({ role: 'professor', search: search || undefined }),
+  );
 
-  if (usersQuery.isLoading || !usersQuery.data) {
-    return <Spinner label="Loading students..." />;
+  if (professorsQuery.isLoading || !professorsQuery.data) {
+    return <Spinner label="Loading professors..." />;
   }
 
   return (
@@ -21,15 +23,15 @@ export function AdminUsersPage() {
         <input className="form-input" placeholder="Search by name or email" value={search} onChange={(event) => setSearch(event.target.value)} />
       </section>
       <Table headers={['Avatar', 'Name', 'Email', 'Role', 'Joined']}>
-        {usersQuery.data.map((user) => (
-          <tr key={user.id}>
+        {professorsQuery.data.map((professor) => (
+          <tr key={professor.id}>
             <td className="table-cell">
-              <Avatar name={user.name} image={user.avatar} />
+              <Avatar name={professor.name} image={professor.avatar} />
             </td>
-            <td className="table-cell font-medium">{user.name}</td>
-            <td className="table-cell text-text-secondary">{user.email}</td>
-            <td className="table-cell capitalize">{user.role}</td>
-            <td className="table-cell text-text-secondary">{formatDate(user.joined)}</td>
+            <td className="table-cell font-medium">{professor.name}</td>
+            <td className="table-cell text-text-secondary">{professor.email}</td>
+            <td className="table-cell capitalize">{professor.role}</td>
+            <td className="table-cell text-text-secondary">{formatDate(professor.joined)}</td>
           </tr>
         ))}
       </Table>

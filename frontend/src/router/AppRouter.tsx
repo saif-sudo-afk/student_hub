@@ -25,6 +25,7 @@ import { ProfessorAnnouncementsPage } from '@/pages/professor/Announcements';
 import { ProfessorAIAssistantPage } from '@/pages/professor/AIAssistant';
 import { AdminDashboardPage } from '@/pages/admin/Dashboard';
 import { AdminUsersPage } from '@/pages/admin/Users';
+import { AdminProfessorsPage } from '@/pages/admin/Professors';
 import { AdminCoursesPage } from '@/pages/admin/Courses';
 import { AdminAnnouncementsPage } from '@/pages/admin/Announcements';
 import { AdminAILogsPage } from '@/pages/admin/AILogs';
@@ -79,6 +80,7 @@ export function AppRouter() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="professors" element={<AdminProfessorsPage />} />
           <Route path="courses" element={<AdminCoursesPage />} />
           <Route path="announcements" element={<AdminAnnouncementsPage />} />
           <Route path="ai-logs" element={<AdminAILogsPage />} />

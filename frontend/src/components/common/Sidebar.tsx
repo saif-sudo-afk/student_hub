@@ -9,6 +9,7 @@ import {
   Shield,
   Sparkles,
   UserCog,
+  Users,
 } from 'lucide-react';
 
 import { Avatar } from '@/components/common/Avatar';
@@ -37,7 +38,8 @@ const navByRole: Record<UserRole, Array<{ to: string; label: string; icon: typeo
   ],
   admin: [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/admin/users', label: 'Users', icon: UserCog },
+    { to: '/admin/users', label: 'Students', icon: Users },
+    { to: '/admin/professors', label: 'Professors', icon: UserCog },
     { to: '/admin/courses', label: 'Courses', icon: BookOpen },
     { to: '/admin/announcements', label: 'Announcements', icon: Bell },
     { to: '/admin/ai-logs', label: 'AI Logs', icon: Shield },
@@ -45,14 +47,10 @@ const navByRole: Record<UserRole, Array<{ to: string; label: string; icon: typeo
   ],
 };
 
-interface SidebarProps {
-  mobile?: boolean;
-}
-
-export function Sidebar({ mobile = false }: SidebarProps) {
+export function Sidebar() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  const setMobileSidebarOpen = useUiStore((state) => state.setMobileSidebarOpen);
+  const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
 
   if (!user) {
     return null;
@@ -61,7 +59,7 @@ export function Sidebar({ mobile = false }: SidebarProps) {
   const navItems = navByRole[user.role];
 
   return (
-    <aside className={cn('flex h-full w-sidebar flex-col bg-primary px-5 py-6 text-white', mobile && 'shadow-soft')}>
+    <aside className="flex h-full w-sidebar flex-col bg-primary px-5 py-6 text-white shadow-soft">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">
           SH
@@ -78,7 +76,7 @@ export function Sidebar({ mobile = false }: SidebarProps) {
           <NavLink
             key={item.to}
             to={item.to}
-            onClick={() => setMobileSidebarOpen(false)}
+            onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-lg border-l-4 border-transparent px-3 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white',
@@ -109,6 +107,7 @@ export function Sidebar({ mobile = false }: SidebarProps) {
           type="button"
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
           onClick={() => {
+            setSidebarOpen(false);
             void logout();
           }}
         >

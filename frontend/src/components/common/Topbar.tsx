@@ -19,7 +19,8 @@ const titleMap: Record<string, string> = {
   '/professor/announcements': 'Announcements',
   '/professor/ai': 'AI Assistant',
   '/admin/dashboard': 'Admin Dashboard',
-  '/admin/users': 'Users',
+  '/admin/users': 'Students',
+  '/admin/professors': 'Professors',
   '/admin/courses': 'Courses',
   '/admin/announcements': 'Announcements',
   '/admin/ai-logs': 'AI Logs',
@@ -29,7 +30,7 @@ const titleMap: Record<string, string> = {
 export function Topbar() {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
-  const toggleMobileSidebar = useUiStore((state) => state.toggleMobileSidebar);
+  const toggleSidebar = useUiStore((state) => state.toggleSidebar);
   const pageTitle =
     titleMap[location.pathname] ??
     location.pathname
@@ -48,8 +49,9 @@ export function Topbar() {
     <header className="sticky top-0 z-20 flex h-topbar items-center gap-4 border-b border-border bg-white px-4 shadow-sm md:px-8">
       <button
         type="button"
-        className="inline-flex rounded-lg border border-border p-2 text-text-secondary md:hidden"
-        onClick={toggleMobileSidebar}
+        className="inline-flex rounded-lg border border-border p-2 text-text-secondary transition hover:bg-surface"
+        onClick={toggleSidebar}
+        aria-label="Open sidebar"
       >
         <Menu className="h-5 w-5" />
       </button>

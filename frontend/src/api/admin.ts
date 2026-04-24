@@ -30,11 +30,6 @@ export async function getAdminUsers(params?: { role?: string; search?: string })
   return response.data.results;
 }
 
-export async function updateAdminUser(userId: string, role: string) {
-  const response = await client.patch<UserSummary>(`/api/admin/users/${userId}/`, { role });
-  return response.data;
-}
-
 export async function getAdminCourses() {
   const response = await client.get<ApiListResponse<CourseSummary>>('/api/admin/courses/');
   return response.data.results;

@@ -13,7 +13,7 @@ export function AdminDashboardPage() {
   const dashboardQuery = useApiQuery(['admin-dashboard'], getAdminDashboard);
   const summaryQuery = useApiQuery(['admin-ai-summary-inline'], getAdminAISummary);
 
-  if (dashboardQuery.isLoading || summaryQuery.isLoading || !dashboardQuery.data || !summaryQuery.data) {
+  if (dashboardQuery.isLoading || !dashboardQuery.data) {
     return <Spinner label="Loading admin dashboard..." />;
   }
 
@@ -72,7 +72,11 @@ export function AdminDashboardPage() {
             Regenerate
           </button>
         </div>
-        <p className="mt-5 text-text-secondary">{summaryQuery.data.summary}</p>
+        <p className="mt-5 text-text-secondary">
+          {summaryQuery.isLoading
+            ? 'Generating summary...'
+            : summaryQuery.data?.summary ?? 'AI summary is unavailable right now. The rest of the dashboard is still available.'}
+        </p>
       </section>
     </div>
   );

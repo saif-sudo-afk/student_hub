@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { getAdminUsers } from '@/api/admin';
+import { getAdminUsers, updateAdminUser } from '@/api/admin';
 import { Avatar } from '@/components/common/Avatar';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -10,8 +11,16 @@ import { useApiQuery } from '@/hooks/useApi';
 import { formatDate } from '@/utils/formatDate';
 
 export function AdminUsersPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const usersQuery = useApiQuery(['admin-users', 'student', search], () => getAdminUsers({ role: 'student', search: search || undefined }));
+  const updateUser = useMutation({
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateAdminUser(id, { is_active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+    },
+  });
 
   if (usersQuery.isError) {
     return (
@@ -35,7 +44,7 @@ export function AdminUsersPage() {
       {usersQuery.data.length === 0 ? (
         <EmptyState title="No students" description="Student accounts will appear here after registration." />
       ) : (
-        <Table headers={['Avatar', 'Name', 'Email', 'Role', 'Joined']}>
+        <Table headers={['Avatar', 'Name', 'Email', 'Status', 'Joined', 'Actions']}>
           {usersQuery.data.map((user) => (
             <tr key={user.id}>
               <td className="table-cell">
@@ -43,8 +52,13 @@ export function AdminUsersPage() {
               </td>
               <td className="table-cell font-medium">{user.name}</td>
               <td className="table-cell text-text-secondary">{user.email}</td>
-              <td className="table-cell capitalize">{user.role}</td>
+              <td className="table-cell capitalize">{user.is_active ? 'Active' : 'Inactive'}</td>
               <td className="table-cell text-text-secondary">{formatDate(user.joined)}</td>
+              <td className="table-cell">
+                <button type="button" className="btn-secondary" onClick={() => updateUser.mutate({ id: user.id, is_active: !user.is_active })}>
+                  {user.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+              </td>
             </tr>
           ))}
         </Table>

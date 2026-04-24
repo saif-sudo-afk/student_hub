@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     admin_ai_logs,
     admin_ai_summary,
+    admin_announcement_detail,
     admin_announcements,
     admin_courses,
     admin_dashboard,
@@ -66,6 +67,7 @@ urlpatterns = [
     path("admin/users/<uuid:user_id>/", admin_user_detail, name="admin_user_detail"),
     path("admin/courses/", admin_courses, name="admin_courses"),
     path("admin/announcements/", admin_announcements, name="admin_announcements"),
+    path("admin/announcements/<uuid:announcement_id>/", admin_announcement_detail, name="admin_announcement_detail"),
     path("admin/ai-logs/", admin_ai_logs, name="admin_ai_logs"),
     path("admin/ai-summary/", admin_ai_summary, name="admin_ai_summary"),
     path("ai/history/", ai_history, name="ai_history"),

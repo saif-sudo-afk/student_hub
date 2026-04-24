@@ -19,6 +19,7 @@ export interface UserSummary {
   name: string;
   email: string;
   role: UserRole;
+  is_active: boolean;
   avatar: string | null;
   joined: string;
   student_profile: StudentProfileSummary | null;

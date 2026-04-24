@@ -854,25 +854,27 @@ def admin_dashboard(request):
         role: User.objects.filter(role=role).count()
         for role, _label in UserRole.choices
     }
-    top_courses = list(
-        Course.objects.annotate(
-            submission_count=Count(
-                "assignments__submissions",
-                filter=Q(
-                    assignments__submissions__is_deleted=False,
-                    assignments__submissions__submitted_at__gte=week_start,
-                ),
+    submissions_this_week = Submission.objects.filter(submitted_at__gte=week_start).count()
+    platform_avg_grade = Submission.objects.exclude(score__isnull=True).aggregate(avg=Avg("score"))["avg"]
+    top_courses = []
+    try:
+        top_courses = list(
+            Course.objects.annotate(
+                submission_count=Count(
+                    "assignments__submissions",
+                    filter=Q(assignments__submissions__submitted_at__gte=week_start),
+                )
             )
+            .filter(submission_count__gt=0)
+            .order_by("-submission_count", "code")[:5]
         )
-        .filter(submission_count__gt=0)
-        .order_by("-submission_count", "code")[:5]
-    )
-    platform_avg_grade = Submission.objects.filter(is_deleted=False).exclude(score__isnull=True).aggregate(avg=Avg("score"))["avg"]
+    except Exception:
+        top_courses = []
     return Response(
         {
             "total_users": User.objects.count(),
             "active_courses": Course.objects.filter(is_active=True).count(),
-            "submissions_this_week": Submission.objects.filter(is_deleted=False, submitted_at__gte=week_start).count(),
+            "submissions_this_week": submissions_this_week,
             "platform_avg_grade": to_float(platform_avg_grade),
             "users_by_role": users_by_role,
             "top_courses": [

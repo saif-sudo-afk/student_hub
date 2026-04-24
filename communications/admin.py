@@ -8,6 +8,7 @@ from .models import (
     Announcement,
     AnnouncementScope,
     AnnouncementStatus,
+    AnnouncementTargetRole,
     CalendarEvent,
     EventVisibility,
 )
@@ -42,12 +43,15 @@ class AnnouncementAdminForm(forms.ModelForm):
         scope = cleaned_data.get("scope")
         course = cleaned_data.get("course")
         groups = cleaned_data.get("target_audience")
+        target_role = cleaned_data.get("target_role")
         if scope == AnnouncementScope.GLOBAL and (course or groups):
             raise forms.ValidationError(
                 "Global announcements cannot target a course or study group."
             )
         if scope == AnnouncementScope.COURSE and not course:
             raise forms.ValidationError("Course announcements must target a course.")
+        if scope == AnnouncementScope.ROLE and target_role == AnnouncementTargetRole.ALL:
+            raise forms.ValidationError("Role announcements must target a specific role.")
         if scope == AnnouncementScope.GROUP and not groups:
             raise forms.ValidationError("Group announcements must target at least one study group.")
         return cleaned_data
@@ -60,9 +64,11 @@ class AnnouncementAdmin(admin.ModelAdmin):
         "title",
         "status",
         "priority",
+        "target_role",
         "publish_date",
         "expiry_date",
         "created_by",
+        "last_updated_by",
     )
     list_filter = ("status", "scope", "priority", "send_notification")
     search_fields = ("title", "content", "created_by__email")
@@ -73,6 +79,7 @@ class AnnouncementAdmin(admin.ModelAdmin):
         "attachment",
         "scope",
         "course",
+        "target_role",
         "target_audience",
         "publish_date",
         "expiry_date",
@@ -80,16 +87,26 @@ class AnnouncementAdmin(admin.ModelAdmin):
         "priority",
         "send_notification",
         "created_by",
+        "created_at",
+        "last_updated_by",
+        "updated_at",
     )
+    readonly_fields = ("created_at", "updated_at", "last_updated_by")
     actions = ("archive_selected", "republish_selected")
 
     @admin.action(description="Archive selected")
     def archive_selected(self, request, queryset):
-        queryset.update(status=AnnouncementStatus.ARCHIVED)
+        queryset.update(status=AnnouncementStatus.ARCHIVED, last_updated_by=request.user)
 
     @admin.action(description="Republish selected")
     def republish_selected(self, request, queryset):
-        queryset.update(status=AnnouncementStatus.PUBLISHED, expiry_date=None)
+        queryset.update(status=AnnouncementStatus.PUBLISHED, expiry_date=None, last_updated_by=request.user)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        obj.last_updated_by = request.user
+        super().save_model(request, obj, form, change)
 
     def has_module_permission(self, request):
         if _is_student_role_user(request.user):

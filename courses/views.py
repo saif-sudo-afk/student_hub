@@ -9,7 +9,7 @@ from accounts.decorators import professor_required
 from accounts.models import UserRole
 
 from .forms import CourseDescriptionForm, CourseMaterialUploadForm
-from .models import Course, CourseMaterial, EnrollmentStatus, StudyMaterial
+from .models import Course, CourseMaterial, Enrollment, EnrollmentStatus, StudyMaterial
 
 
 def _visible_courses(user):
@@ -39,10 +39,61 @@ def _professor_courses(user):
     return Course.objects.none()
 
 
+def _ensure_student_enrollment(user, course):
+    profile = getattr(user, "student_profile", None)
+    if user.role != UserRole.STUDENT or profile is None:
+        return None
+    if not course.majors.filter(pk=profile.major_id).exists():
+        return None
+    enrollment, _ = Enrollment.objects.get_or_create(
+        student=profile,
+        course=course,
+        semester=course.semester,
+        defaults={"status": EnrollmentStatus.ACTIVE},
+    )
+    return enrollment
+
+
 @login_required
 def course_list(request):
     courses = _visible_courses(request.user)
     return render(request, "courses/course_list.html", {"courses": courses})
+
+
+@login_required
+def public_course_detail(request, course_id):
+    course = get_object_or_404(_visible_courses(request.user), pk=course_id)
+    _ensure_student_enrollment(request.user, course)
+    resources = []
+    if course.material:
+        resources.append(
+            {
+                "title": f"{course.title} core material",
+                "url": course.material.url,
+                "uploaded_at": course.updated_at,
+                "uploaded_by_name": "Course record",
+            }
+        )
+    resources.extend(
+        {
+            "title": material.title,
+            "url": material.file.url,
+            "uploaded_at": material.uploaded_at,
+            "uploaded_by_name": material.uploaded_by.full_name,
+        }
+        for material in course.course_materials.all()
+    )
+    resources.extend(
+        {
+            "title": material.title,
+            "url": material.file.url if material.file else material.external_url,
+            "uploaded_at": material.created_at,
+            "uploaded_by_name": material.uploaded_by.user.full_name,
+        }
+        for material in course.materials.filter(is_published=True)
+    )
+    resources.sort(key=lambda item: item["uploaded_at"], reverse=True)
+    return render(request, "courses/course_detail.html", {"course": course, "resources": resources})
 
 
 @login_required

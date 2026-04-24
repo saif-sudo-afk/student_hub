@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
 import {
@@ -16,11 +16,14 @@ export function ProfessorAnnouncementsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [scope, setScope] = useState('course');
   const [courseId, setCourseId] = useState('');
+  const [targetRole, setTargetRole] = useState('all');
   const [status, setStatus] = useState('published');
   const [priority, setPriority] = useState('0');
   const [publishDate, setPublishDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
+  const [sendNotification, setSendNotification] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
 
   const announcementsQuery = useApiQuery(['professor-announcements'], getProfessorAnnouncements);
@@ -31,13 +34,15 @@ export function ProfessorAnnouncementsPage() {
       const formData = new FormData();
       formData.append('title', title);
       formData.append('content', content);
-      formData.append('scope', 'course');
-      formData.append('course', courseId);
+      formData.append('scope', scope);
+      formData.append('course', scope === 'course' ? courseId : '');
+      formData.append('target_role', scope === 'role' ? targetRole : 'all');
       formData.append('status', status);
       formData.append('priority', priority);
       if (publishDate) formData.append('publish_date', publishDate);
       if (expiryDate) formData.append('expiry_date', expiryDate);
       if (attachment) formData.append('attachment', attachment);
+      if (sendNotification) formData.append('send_notification', 'on');
       if (editingId) {
         return updateProfessorAnnouncement(editingId, formData);
       }
@@ -47,11 +52,14 @@ export function ProfessorAnnouncementsPage() {
       setEditingId(null);
       setTitle('');
       setContent('');
+      setScope('course');
       setCourseId('');
+      setTargetRole('all');
       setStatus('published');
       setPriority('0');
       setPublishDate('');
       setExpiryDate('');
+      setSendNotification(false);
       setAttachment(null);
       await announcementsQuery.refetch();
     },
@@ -66,11 +74,6 @@ export function ProfessorAnnouncementsPage() {
 
   const announcements = announcementsQuery.data ?? [];
 
-  const currentAnnouncement = useMemo(
-    () => announcements.find((item) => item.id === editingId) ?? null,
-    [announcements, editingId],
-  );
-
   if (announcementsQuery.isLoading || coursesQuery.isLoading || !coursesQuery.data) {
     return <Spinner label="Loading announcements..." />;
   }
@@ -82,14 +85,30 @@ export function ProfessorAnnouncementsPage() {
         <div className="mt-5 grid gap-4">
           <input className="form-input" placeholder="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
           <textarea className="form-textarea" placeholder="Content" value={content} onChange={(event) => setContent(event.target.value)} />
-          <select className="form-input" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-            <option value="">Select a course</option>
-            {coursesQuery.data.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.code} - {course.title}
-              </option>
-            ))}
-          </select>
+          <div className="grid gap-4 md:grid-cols-2">
+            <select className="form-input" value={scope} onChange={(event) => setScope(event.target.value)}>
+              <option value="course">Course</option>
+              <option value="role">Role</option>
+              <option value="global">Global</option>
+            </select>
+            {scope === 'course' ? (
+              <select className="form-input" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+                <option value="">Select a course</option>
+                {coursesQuery.data.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.code} - {course.title}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select className="form-input" value={targetRole} onChange={(event) => setTargetRole(event.target.value)}>
+                <option value="all">All</option>
+                <option value="students">Students</option>
+                <option value="professors">Professors</option>
+                <option value="admins">Admins</option>
+              </select>
+            )}
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <input type="datetime-local" className="form-input" value={publishDate} onChange={(event) => setPublishDate(event.target.value)} />
             <input type="datetime-local" className="form-input" value={expiryDate} onChange={(event) => setExpiryDate(event.target.value)} />
@@ -100,9 +119,17 @@ export function ProfessorAnnouncementsPage() {
               <option value="published">Published</option>
               <option value="archived">Archived</option>
             </select>
-            <input className="form-input" value={priority} onChange={(event) => setPriority(event.target.value)} placeholder="Priority" />
+            <select className="form-input" value={priority} onChange={(event) => setPriority(event.target.value)}>
+              <option value="0">Normal</option>
+              <option value="1">Important</option>
+              <option value="2">Urgent</option>
+            </select>
           </div>
           <input type="file" className="form-input h-auto py-2" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} />
+          <label className="flex items-center gap-2 text-sm font-medium text-text-secondary">
+            <input type="checkbox" checked={sendNotification} onChange={(event) => setSendNotification(event.target.checked)} />
+            Send notification
+          </label>
           <div className="flex gap-3">
             <button type="button" className="btn-primary" onClick={() => createMutation.mutate()}>
               {editingId ? 'Save Changes' : 'Create Announcement'}
@@ -115,11 +142,14 @@ export function ProfessorAnnouncementsPage() {
                   setEditingId(null);
                   setTitle('');
                   setContent('');
+                  setScope('course');
                   setCourseId('');
+                  setTargetRole('all');
                   setStatus('published');
                   setPriority('0');
                   setPublishDate('');
                   setExpiryDate('');
+                  setSendNotification(false);
                 }}
               >
                 Cancel
@@ -150,11 +180,13 @@ export function ProfessorAnnouncementsPage() {
                       setEditingId(announcement.id);
                       setTitle(announcement.title);
                       setContent(announcement.content);
+                      setScope(announcement.scope);
                       setCourseId(announcement.course?.id ?? '');
+                      setTargetRole(announcement.target_role);
                       setStatus(announcement.status);
                       setPriority(String(announcement.priority));
-                      setPublishDate(currentAnnouncement?.publish_date ?? '');
-                      setExpiryDate(currentAnnouncement?.expiry_date ?? '');
+                      setPublishDate(announcement.publish_date ?? '');
+                      setExpiryDate(announcement.expiry_date ?? '');
                     }}
                   >
                     Edit

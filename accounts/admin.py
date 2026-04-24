@@ -24,7 +24,7 @@ class UserAdminCreationForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ("email", "full_name", "role", "is_active", "is_staff")
+        fields = ("email", "full_name", "role", "is_active")
 
     def clean_password2(self):
         password1 = self.cleaned_data.get("password1")
@@ -120,10 +120,7 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Personal info", {"fields": ("full_name", "role")}),
-        (
-            "Access",
-            {"fields": ("is_active", "is_staff", "is_superuser")},
-        ),
+        ("Access", {"fields": ("is_active",)}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )  # FIX-ADMIN-1 done
     add_fieldsets = (
@@ -136,7 +133,6 @@ class UserAdmin(BaseUserAdmin):
                     "full_name",
                     "role",
                     "is_active",
-                    "is_staff",
                     "password1",
                     "password2",
                 ),

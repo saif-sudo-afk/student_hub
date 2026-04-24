@@ -85,6 +85,7 @@ export interface AnnouncementSummary {
   title: string;
   content: string;
   scope: string;
+  target_role: string;
   status: string;
   priority: number;
   publish_date: string | null;
@@ -92,6 +93,9 @@ export interface AnnouncementSummary {
   attachment_url: string | null;
   course: { id: string; code: string; title: string } | null;
   created_by: string | null;
+  created_at: string | null;
+  last_updated_by: string | null;
+  updated_at: string | null;
 }
 
 export interface SubmissionSummary {

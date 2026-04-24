@@ -21,6 +21,52 @@ ROLE_PERMISSION_CODENAMES = {
         "view_studygroup",
         "view_submission",
     ],
+    UserRole.ADMIN: [
+        "add_announcement",
+        "add_calendarevent",
+        "add_course",
+        "add_coursemajor",
+        "add_professorprofile",
+        "add_studentprofile",
+        "add_teachingassignment",
+        "add_user",
+        "change_announcement",
+        "change_calendarevent",
+        "change_course",
+        "change_coursemajor",
+        "change_enrollment",
+        "change_professorprofile",
+        "change_studentprofile",
+        "change_submission",
+        "change_teachingassignment",
+        "change_user",
+        "delete_announcement",
+        "delete_calendarevent",
+        "delete_course",
+        "delete_coursemajor",
+        "delete_professorprofile",
+        "delete_studentprofile",
+        "delete_submission",
+        "delete_teachingassignment",
+        "delete_user",
+        "view_aiconversation",
+        "view_aimessage",
+        "view_aiquerylog",
+        "view_announcement",
+        "view_assignment",
+        "view_calendarevent",
+        "view_course",
+        "view_coursematerial",
+        "view_coursemajor",
+        "view_enrollment",
+        "view_fieldofstudyconfig",
+        "view_professorprofile",
+        "view_studentprofile",
+        "view_studygroup",
+        "view_submission",
+        "view_teachingassignment",
+        "view_user",
+    ],
     UserRole.PROFESSOR: [
         "add_announcement",
         "add_assignment",
@@ -56,10 +102,6 @@ ROLE_PERMISSION_CODENAMES = {
 
 
 def _ensure_group_permissions(group, role):
-    if role == UserRole.ADMIN:
-        group.permissions.set(Permission.objects.all())
-        return
-
     permissions = Permission.objects.filter(
         codename__in=ROLE_PERMISSION_CODENAMES.get(role, [])
     )

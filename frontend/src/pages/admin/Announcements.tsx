@@ -28,15 +28,18 @@ export function AdminAnnouncementsPage() {
   }
 
   return (
-    <Table headers={['Title', 'Scope', 'Status', 'Priority', 'Created By', 'Published']}>
+    <Table headers={['Title', 'Scope', 'Target', 'Status', 'Priority', 'Created By', 'Updated By', 'Published', 'Updated']}>
       {announcementsQuery.data.map((announcement) => (
         <tr key={announcement.id}>
           <td className="table-cell font-medium">{announcement.title}</td>
           <td className="table-cell text-text-secondary">{announcement.scope}</td>
+          <td className="table-cell text-text-secondary">{announcement.target_role}</td>
           <td className="table-cell text-text-secondary">{announcement.status}</td>
           <td className="table-cell">{announcement.priority}</td>
           <td className="table-cell text-text-secondary">{announcement.created_by ?? 'System'}</td>
+          <td className="table-cell text-text-secondary">{announcement.last_updated_by ?? 'N/A'}</td>
           <td className="table-cell text-text-secondary">{formatDate(announcement.publish_date)}</td>
+          <td className="table-cell text-text-secondary">{formatDate(announcement.updated_at)}</td>
         </tr>
       ))}
     </Table>

@@ -14,6 +14,7 @@ class AudienceScope(models.TextChoices):
 class AnnouncementScope(models.TextChoices):
     GLOBAL = "global", "Global"
     COURSE = "course", "Course"
+    ROLE = "role", "Role"
     GROUP = "group", "Group"
 
 
@@ -21,6 +22,19 @@ class AnnouncementStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
     PUBLISHED = "published", "Published"
     ARCHIVED = "archived", "Archived"
+
+
+class AnnouncementPriority(models.IntegerChoices):
+    NORMAL = 0, "Normal"
+    IMPORTANT = 1, "Important"
+    URGENT = 2, "Urgent"
+
+
+class AnnouncementTargetRole(models.TextChoices):
+    ALL = "all", "All"
+    STUDENTS = "students", "Students"
+    PROFESSORS = "professors", "Professors"
+    ADMINS = "admins", "Admins"
 
 
 class EventType(models.TextChoices):
@@ -46,6 +60,13 @@ class Announcement(models.Model):
         related_name="announcements",
         null=True,
     )
+    last_updated_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        related_name="updated_announcements",
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=255)
     content = models.TextField()
     attachment = models.FileField(upload_to="announcements/", blank=True, null=True)
@@ -62,6 +83,11 @@ class Announcement(models.Model):
         related_name="announcements",
         blank=True,
     )
+    target_role = models.CharField(
+        max_length=20,
+        choices=AnnouncementTargetRole.choices,
+        default=AnnouncementTargetRole.ALL,
+    )
     publish_date = models.DateTimeField(default=timezone.now)
     expiry_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
@@ -69,7 +95,10 @@ class Announcement(models.Model):
         choices=AnnouncementStatus.choices,
         default=AnnouncementStatus.DRAFT,
     )
-    priority = models.IntegerField(default=0)
+    priority = models.IntegerField(
+        choices=AnnouncementPriority.choices,
+        default=AnnouncementPriority.NORMAL,
+    )
     send_notification = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -79,6 +108,8 @@ class Announcement(models.Model):
             raise ValidationError("Global announcement cannot target a specific course.")
         if self.scope == AnnouncementScope.COURSE and not self.course_id:
             raise ValidationError("Course-scoped announcement must target a course.")
+        if self.scope == AnnouncementScope.ROLE and self.target_role == AnnouncementTargetRole.ALL:
+            raise ValidationError("Role-scoped announcement must target a specific role.")
         if self.expiry_date and self.expiry_date <= self.publish_date:
             raise ValidationError("expiry_date must be after publish_date.")
 

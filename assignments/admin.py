@@ -64,6 +64,21 @@ class StudyGroupAdmin(admin.ModelAdmin):
     autocomplete_fields = ("assignment", "leader")
     filter_horizontal = ("members",)  # FIX-ADMIN-6 done
 
+    def has_add_permission(self, request):
+        if _is_admin_role_user(request.user):
+            return False
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        if _is_admin_role_user(request.user):
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if _is_admin_role_user(request.user):
+            return False
+        return super().has_delete_permission(request, obj)
+
 
 @admin.register(Submission)
 class SubmissionAdmin(admin.ModelAdmin):

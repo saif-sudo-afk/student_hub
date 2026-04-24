@@ -4,7 +4,7 @@ from django import forms
 
 from courses.models import Course
 
-from .models import Announcement, AnnouncementScope
+from .models import Announcement, AnnouncementScope, AnnouncementTargetRole
 
 
 class ProfessorAnnouncementForm(forms.ModelForm):
@@ -16,6 +16,7 @@ class ProfessorAnnouncementForm(forms.ModelForm):
             "attachment",
             "scope",
             "course",
+            "target_role",
             "publish_date",
             "expiry_date",
             "status",
@@ -45,6 +46,7 @@ class ProfessorAnnouncementForm(forms.ModelForm):
         available_scopes = [(AnnouncementScope.COURSE, "Course")]
         if user is not None and user.has_perm("communications.add_announcement"):
             available_scopes.insert(0, (AnnouncementScope.GLOBAL, "Global"))
+            available_scopes.append((AnnouncementScope.ROLE, "Role"))
         self.fields["scope"].choices = available_scopes
 
     def clean(self):
@@ -55,4 +57,7 @@ class ProfessorAnnouncementForm(forms.ModelForm):
             raise forms.ValidationError("Select a course for course announcements.")
         if scope == AnnouncementScope.GLOBAL:
             cleaned_data["course"] = None
+            cleaned_data["target_role"] = AnnouncementTargetRole.ALL
+        if scope == AnnouncementScope.ROLE and cleaned_data.get("target_role") == AnnouncementTargetRole.ALL:
+            raise forms.ValidationError("Select a specific role for role announcements.")
         return cleaned_data

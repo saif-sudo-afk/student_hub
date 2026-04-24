@@ -45,8 +45,17 @@ def announcement_list(request):
         courses = _visible_courses(request.user)
         base = base.filter(
             Q(scope=AnnouncementScope.GLOBAL)
+            | Q(scope=AnnouncementScope.ROLE, target_role="students")
             | Q(scope=AnnouncementScope.COURSE, course__in=courses)
             | Q(scope=AnnouncementScope.GROUP, target_audience__members=profile)
+        ).distinct()
+    elif request.user.role == UserRole.PROFESSOR:
+        base = base.filter(
+            Q(scope=AnnouncementScope.GLOBAL) | Q(scope=AnnouncementScope.ROLE, target_role="professors")
+        ).distinct()
+    elif request.user.role == UserRole.ADMIN:
+        base = base.filter(
+            Q(scope=AnnouncementScope.GLOBAL) | Q(scope=AnnouncementScope.ROLE, target_role="admins")
         ).distinct()
     announcements = base.order_by("-priority", "-publish_date")
     return render(

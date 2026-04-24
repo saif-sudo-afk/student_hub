@@ -183,6 +183,7 @@ def serialize_announcement(announcement):
         "title": announcement.title,
         "content": announcement.content,
         "scope": announcement.scope,
+        "target_role": getattr(announcement, "target_role", "all"),
         "status": announcement.status,
         "priority": announcement.priority,
         "publish_date": publish_date.isoformat() if publish_date else None,
@@ -196,6 +197,9 @@ def serialize_announcement(announcement):
         if announcement.course_id
         else None,
         "created_by": announcement.created_by.full_name if announcement.created_by_id else None,
+        "created_at": announcement.created_at.isoformat() if announcement.created_at else None,
+        "last_updated_by": announcement.last_updated_by.full_name if getattr(announcement, "last_updated_by_id", None) else None,
+        "updated_at": announcement.updated_at.isoformat() if announcement.updated_at else None,
     }
 
 
@@ -250,6 +254,7 @@ def student_announcements_queryset(user):
         published_announcements_queryset()
         .filter(
             Q(scope=AnnouncementScope.GLOBAL)
+            | Q(scope=AnnouncementScope.ROLE, target_role="students")
             | Q(scope=AnnouncementScope.COURSE, course__in=enrolled_courses)
             | Q(scope=AnnouncementScope.GROUP, target_audience__members=student_profile)
         )
@@ -276,6 +281,21 @@ def course_materials_for(course):
     serialized.extend(serialize_material_item(material) for material in study_materials)
     serialized.sort(key=lambda item: item["uploaded_at"], reverse=True)
     return serialized
+
+
+def ensure_student_enrollment(user, course):
+    profile = getattr(user, "student_profile", None)
+    if user.role != UserRole.STUDENT or profile is None:
+        return None
+    if not course.majors.filter(pk=profile.major_id).exists():
+        return None
+    enrollment, _created = Enrollment.objects.get_or_create(
+        student=profile,
+        course=course,
+        semester=course.semester,
+        defaults={"status": EnrollmentStatus.ACTIVE},
+    )
+    return enrollment
 
 
 @api_view(["POST"])
@@ -397,7 +417,14 @@ def student_dashboard(request):
 @permission_classes([IsAuthenticated])
 def student_courses(request):
     require_role(request.user, UserRole.STUDENT)
-    courses = Course.objects.filter(enrollments__student=request.user.student_profile).select_related("semester").distinct()
+    courses = (
+        Course.objects.filter(
+            Q(enrollments__student=request.user.student_profile)
+            | Q(majors=request.user.student_profile.major)
+        )
+        .select_related("semester")
+        .distinct()
+    )
     return Response({"results": [serialize_course(course) for course in courses]})
 
 
@@ -405,12 +432,19 @@ def student_courses(request):
 @permission_classes([IsAuthenticated])
 def student_course_detail(request, course_id):
     require_role(request.user, UserRole.STUDENT)
-    course = Course.objects.filter(
-        id=course_id,
-        enrollments__student=request.user.student_profile,
-    ).select_related("semester").distinct().first()
+    course = (
+        Course.objects.filter(id=course_id)
+        .filter(
+            Q(enrollments__student=request.user.student_profile)
+            | Q(majors=request.user.student_profile.major)
+        )
+        .select_related("semester")
+        .distinct()
+        .first()
+    )
     if course is None:
         raise PermissionDenied("Course not found.")
+    ensure_student_enrollment(request.user, course)
 
     assignments = Assignment.objects.filter(course=course, is_published=True).select_related("course").order_by("due_at")
     announcements = student_announcements_queryset(request.user).filter(
@@ -805,6 +839,7 @@ def professor_announcements(request):
         raise ValidationError(form.errors)
     announcement = form.save(commit=False)
     announcement.created_by = request.user
+    announcement.last_updated_by = request.user
     announcement.save()
     form.save_m2m()
     return Response(serialize_announcement(announcement), status=status.HTTP_201_CREATED)
@@ -823,7 +858,7 @@ def professor_announcement_detail(request, announcement_id):
         announcement.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    for field in ["title", "content", "scope", "status"]:
+    for field in ["title", "content", "scope", "target_role", "status"]:
         if field in request.data:
             setattr(announcement, field, request.data.get(field))
     if "priority" in request.data:
@@ -840,6 +875,7 @@ def professor_announcement_detail(request, announcement_id):
         announcement.expiry_date = parse_datetime(expiry_value) if expiry_value else None
     if "attachment" in request.FILES:
         announcement.attachment = request.FILES["attachment"]
+    announcement.last_updated_by = request.user
     announcement.full_clean()
     announcement.save()
     return Response(serialize_announcement(announcement))
